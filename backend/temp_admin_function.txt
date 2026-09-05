@@ -1,0 +1,21 @@
+def is_admin():
+    mobile_number = request.headers.get("X-Admin-Mobile")
+
+    if not mobile_number:
+        return None
+
+    mobile_number = str(mobile_number).strip()
+
+    user = User.query.filter_by(
+        mobile_number=mobile_number
+    ).first()
+
+    if not user:
+        return None
+
+    role = str(user.role or "").strip().lower()
+
+    if role != "admin":
+        return None
+
+    return user

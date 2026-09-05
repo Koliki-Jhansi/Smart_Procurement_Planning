@@ -1,0 +1,40 @@
+{
+  "model": "HistGradientBoosting",
+  "features": [
+    "d",
+    "c",
+    "y"
+  ],
+  "max_train_year": 2010,
+  "district_classes": [
+    "Anantapur",
+    "Chittoor",
+    "East Godavari",
+    "Guntur",
+    "Krishna",
+    "Kurnool",
+    "NTR",
+    "Nellore",
+    "Prakasam",
+    "West Godavari"
+  ],
+  "crop_classes": [
+    "Black Gram",
+    "Cotton",
+    "Green Gram",
+    "Groundnut",
+    "Maize",
+    "Paddy",
+    "Red Gram",
+    "Sunflower"
+  ],
+  "metrics_test": {
+    "r2": 0.6379,
+    "mae": 0.6368,
+    "rmse": 0.8793
+  },
+  "test_years": [
+    2011,
+    2014
+  ]
+}

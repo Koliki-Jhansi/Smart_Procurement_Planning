@@ -1,0 +1,50 @@
+{
+    "model": "Random Forest",
+    "records_used": 500000,
+    "mean_absolute_error": 91.74941577896146,
+    "r2_score": 0.9840521185617224,
+    "features": [
+        "District",
+        "Crop",
+        "Season",
+        "Year",
+        "Area"
+    ],
+    "districts": [
+        "Anantapur",
+        "Ananthapuramu",
+        "Chittoor",
+        "East Godavari",
+        "Eluru",
+        "Guntur",
+        "Kakinada",
+        "Krishna",
+        "Kurnool",
+        "NTR",
+        "Nandyal",
+        "Nellore",
+        "Palnadu",
+        "Prakasam",
+        "Sri Sathya Sai",
+        "Tirupati",
+        "Visakhapatnam",
+        "Vizianagaram",
+        "West Godavari",
+        "Y.S.R. Kadapa"
+    ],
+    "crops": [
+        "Black Gram",
+        "Cotton",
+        "Green Gram",
+        "Groundnut",
+        "Maize",
+        "Paddy",
+        "Red Gram",
+        "Sunflower"
+    ],
+    "seasons": [
+        "Kharif",
+        "Rabi",
+        "Summer"
+    ]
+}

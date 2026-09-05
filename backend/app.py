@@ -1,0 +1,144 @@
+from flask import Flask, jsonify
+from flask_cors import CORS
+
+from extensions import db
+
+from routes.auth import auth_bp
+from routes.procurement import procurement_bp
+from routes.procurement_request import procurement_request_bp
+from routes.admin import admin_bp
+from routes.otp import otp_bp
+from routes.government import government_bp
+from routes.prediction import prediction_bp
+from routes.transport import transport_bp
+
+from models.user import User
+from models.training_data import TrainingData
+from models.procurement_center import ProcurementCenter
+from models.warehouse import Warehouse
+from models.location_data import LocationData
+from models.transport_data import TransportData
+from models.procurement_history import ProcurementHistory
+from models.procurement_request import ProcurementRequest
+
+
+app = Flask(__name__)
+
+
+app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///smart_procurement.db"
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+
+
+db.init_app(app)
+
+
+CORS(
+    app,
+    resources={
+        r"/api/*": {
+            "origins": "*"
+        }
+    },
+    allow_headers=[
+        "Content-Type",
+        "X-Admin-Mobile",
+        "Authorization"
+    ],
+    methods=[
+        "GET",
+        "POST",
+        "PUT",
+        "DELETE",
+        "OPTIONS"
+    ]
+)
+
+
+app.register_blueprint(auth_bp)
+
+app.register_blueprint(procurement_bp)
+
+app.register_blueprint(procurement_request_bp)
+
+app.register_blueprint(admin_bp)
+
+app.register_blueprint(otp_bp)
+
+app.register_blueprint(government_bp)
+
+app.register_blueprint(prediction_bp)
+
+app.register_blueprint(
+    transport_bp,
+    url_prefix="/api/transport"
+)
+
+
+@app.route("/")
+def home():
+
+    return jsonify({
+        "success": True,
+        "message": "Smart Crop Procurement Planning API is running."
+    })
+
+
+@app.route("/api/health")
+def health():
+
+    return jsonify({
+        "success": True,
+        "message": "Backend is running."
+    })
+
+
+@app.route("/api")
+def api_info():
+
+    return jsonify({
+        "success": True,
+        "message": "Smart Crop Procurement Planning API",
+        "endpoints": {
+            "health": "/api/health",
+            "register": "/api/auth/register",
+            "login": "/api/auth/login",
+            "crop_prediction": "/api/predict",
+            "procurement_centers": "/api/procurement/centers",
+            "create_procurement_request": "/api/procurement-requests",
+            "get_all_procurement_requests": "/api/procurement-requests",
+            "farmer_requests": "/api/procurement-requests/farmer/<farmer_id>",
+            "single_procurement_request": "/api/procurement-requests/<request_id>",
+            "update_request_status": "/api/procurement-requests/<request_id>/status",
+            "transport_calculation": "/api/transport/calculate"
+        }
+    })
+
+
+def create_database_tables():
+
+    with app.app_context():
+
+        db.create_all()
+
+        print("Database tables checked and created successfully.")
+
+
+if __name__ == "__main__":
+
+    create_database_tables()
+
+    print("Smart Crop Procurement Backend Started")
+
+    print("Backend URL: http://127.0.0.1:5000")
+    print("Health URL: http://127.0.0.1:5000/api/health")
+    print("Prediction URL: http://127.0.0.1:5000/api/predict")
+    print("Centers URL: http://127.0.0.1:5000/api/procurement/centers")
+    print("Procurement Request URL: http://127.0.0.1:5000/api/procurement-requests")
+    print("Farmer Requests URL: http://127.0.0.1:5000/api/procurement-requests/farmer/<farmer_id>")
+    print("Transport URL: http://127.0.0.1:5000/api/transport/calculate")
+
+    app.run(
+        host="127.0.0.1",
+        port=5000,
+        debug=True
+    )
