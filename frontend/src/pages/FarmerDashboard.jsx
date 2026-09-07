@@ -43,6 +43,15 @@ function FarmerDashboard({
   const [loadingRequests, setLoadingRequests] =
     useState(false);
 
+  const [notifications, setNotifications] =
+    useState([]);
+
+  const [unreadNotifications, setUnreadNotifications] =
+    useState(0);
+
+  const [loadingNotifications, setLoadingNotifications] =
+    useState(false);
+
 
   const farmerName =
     user?.full_name ||
@@ -92,6 +101,12 @@ function FarmerDashboard({
     user?.primary_crop ||
     user?.crop ||
     "";
+
+  const latestNotifications =
+    notifications.slice(
+      0,
+      3
+    );
 
 
   const navigate = (
@@ -187,6 +202,166 @@ function FarmerDashboard({
     };
 
 
+  const loadFarmerNotifications =
+    async () => {
+
+      try {
+
+        setLoadingNotifications(
+          true
+        );
+
+
+        const response =
+          await fetch(
+
+            `${API}/api/notifications/farmer/${farmerId}`
+
+          );
+
+
+        const result =
+          await response.json();
+
+
+        if (!response.ok) {
+
+          throw new Error(
+
+            result.message ||
+            result.error ||
+            "Unable to load notifications."
+
+          );
+
+        }
+
+
+        if (
+          result.success === false
+        ) {
+
+          throw new Error(
+
+            result.message ||
+            "Unable to load notifications."
+
+          );
+
+        }
+
+
+        setNotifications(
+
+          result.notifications ||
+          []
+
+        );
+
+
+        setUnreadNotifications(
+
+          result.unread_count ||
+          0
+
+        );
+
+
+      } catch (error) {
+
+        console.error(
+          "LOAD NOTIFICATIONS ERROR:",
+          error
+        );
+
+
+      } finally {
+
+        setLoadingNotifications(
+          false
+        );
+
+      }
+
+    };
+
+
+  const markAllNotificationsRead =
+    async () => {
+
+      try {
+
+        const response =
+          await fetch(
+
+            `${API}/api/notifications/farmer/${farmerId}/read-all`,
+
+            {
+              method: "PUT"
+            }
+
+          );
+
+
+        const result =
+          await response.json();
+
+
+        if (!response.ok || result.success === false) {
+
+          throw new Error(
+
+            result.message ||
+            "Unable to update notifications."
+
+          );
+
+        }
+
+
+        setNotifications((previous) =>
+          previous.map((notification) => ({
+            ...notification,
+            is_read: true
+          }))
+        );
+
+
+        setUnreadNotifications(
+          0
+        );
+
+
+      } catch (error) {
+
+        console.error(
+          "MARK NOTIFICATIONS READ ERROR:",
+          error
+        );
+
+      }
+
+    };
+
+
+  useEffect(() => {
+
+    loadFarmerNotifications();
+
+    const intervalId = setInterval(
+      loadFarmerNotifications,
+      10000
+    );
+
+    return () => {
+      clearInterval(intervalId);
+    };
+
+  }, [
+    farmerId
+  ]);
+
+
   useEffect(() => {
 
     if (
@@ -194,6 +369,7 @@ function FarmerDashboard({
     ) {
 
       loadFarmerRequests();
+      loadFarmerNotifications();
 
     }
 
@@ -432,6 +608,7 @@ function FarmerDashboard({
       setTimeout(() => {
 
         loadFarmerRequests();
+        loadFarmerNotifications();
 
       }, 500);
 
@@ -556,6 +733,9 @@ function FarmerDashboard({
           >
 
             📋 My Requests
+            {unreadNotifications > 0
+              ? ` (${unreadNotifications})`
+              : ""}
 
           </button>
 
@@ -635,11 +815,33 @@ function FarmerDashboard({
             </div>
 
 
-            <div style={styles.locationBox}>
+            <div style={styles.headerActions}>
 
-              📍
-              {" "}
-              {district || "District not available"}
+              <button
+
+                onClick={() =>
+                  navigate("requests")
+                }
+
+                style={styles.notificationButton}
+
+              >
+
+                Notifications
+                {unreadNotifications > 0
+                  ? ` (${unreadNotifications})`
+                  : ""}
+
+              </button>
+
+
+              <div style={styles.locationBox}>
+
+                📍
+                {" "}
+                {district || "District not available"}
+
+              </div>
 
             </div>
 
@@ -695,6 +897,56 @@ function FarmerDashboard({
 
 
             </section>
+
+
+            {latestNotifications.length > 0 && (
+
+              <section style={styles.notificationPanel}>
+
+
+                <div style={styles.notificationPanelHeader}>
+
+                  <div>
+
+                    <h2 style={styles.notificationTitle}>
+                      Recent Notifications
+                    </h2>
+
+                    <p style={styles.notificationSubtitle}>
+                      Government decisions on your procurement requests.
+                    </p>
+
+                  </div>
+
+
+                  {unreadNotifications > 0 && (
+
+                    <button
+
+                      onClick={markAllNotificationsRead}
+
+                      style={styles.markReadButton}
+
+                    >
+
+                      Mark all read
+
+                    </button>
+
+                  )}
+
+                </div>
+
+
+                <NotificationList
+                  notifications={latestNotifications}
+                  loading={loadingNotifications}
+                />
+
+
+              </section>
+
+            )}
 
 
             <h2 style={styles.sectionHeading}>
@@ -943,6 +1195,10 @@ function FarmerDashboard({
           openProcurementRequest
         }
 
+        onRequestSent={
+          handleRequestSent
+        }
+
       />
 
     );
@@ -1048,6 +1304,56 @@ function FarmerDashboard({
 
 
         <main style={styles.requestMain}>
+
+
+          {notifications.length > 0 && (
+
+            <section style={styles.notificationPanel}>
+
+
+              <div style={styles.notificationPanelHeader}>
+
+                <div>
+
+                  <h2 style={styles.notificationTitle}>
+                    Notifications
+                  </h2>
+
+                  <p style={styles.notificationSubtitle}>
+                    Approval and rejection updates from the Government.
+                  </p>
+
+                </div>
+
+
+                {unreadNotifications > 0 && (
+
+                  <button
+
+                    onClick={markAllNotificationsRead}
+
+                    style={styles.markReadButton}
+
+                  >
+
+                    Mark all read
+
+                  </button>
+
+                )}
+
+              </div>
+
+
+              <NotificationList
+                notifications={notifications}
+                loading={loadingNotifications}
+              />
+
+
+            </section>
+
+          )}
 
 
           {loadingRequests ? (
@@ -1287,6 +1593,77 @@ function StatCard({
 }
 
 
+function NotificationList({
+
+  notifications,
+  loading
+
+}) {
+
+  if (loading && notifications.length === 0) {
+
+    return (
+
+      <p style={styles.notificationEmpty}>
+        Loading notifications...
+      </p>
+
+    );
+
+  }
+
+
+  return (
+
+    <div style={styles.notificationList}>
+
+      {notifications.map((notification) => (
+
+        <div
+          key={notification.id}
+          style={{
+            ...styles.notificationItem,
+            ...(notification.is_read
+              ? styles.notificationRead
+              : styles.notificationUnread)
+          }}
+        >
+
+          <div style={styles.notificationItemHeader}>
+
+            <strong>
+              {notification.title}
+            </strong>
+
+            <span style={styles.notificationStatus}>
+              {notification.status}
+            </span>
+
+          </div>
+
+
+          <p style={styles.notificationMessage}>
+            {notification.message}
+          </p>
+
+
+          <small style={styles.notificationTime}>
+            {notification.created_at_display ||
+              notification.created_at ||
+              ""}
+          </small>
+
+        </div>
+
+      ))}
+
+    </div>
+
+  );
+
+}
+
+
 function ServiceCard({
 
   icon,
@@ -1492,7 +1869,9 @@ const styles = {
     padding: "30px 45px",
     display: "flex",
     justifyContent: "space-between",
-    alignItems: "center"
+    alignItems: "center",
+    gap: "20px",
+    flexWrap: "wrap"
   },
 
   headerSmall: {
@@ -1514,6 +1893,23 @@ const styles = {
     borderRadius: "8px"
   },
 
+  headerActions: {
+    display: "flex",
+    alignItems: "center",
+    gap: "12px",
+    flexWrap: "wrap"
+  },
+
+  notificationButton: {
+    padding: "10px 15px",
+    background: "#176b4d",
+    color: "white",
+    border: "none",
+    borderRadius: "8px",
+    cursor: "pointer",
+    fontWeight: "bold"
+  },
+
   main: {
     padding: "35px 45px"
   },
@@ -1523,6 +1919,95 @@ const styles = {
     color: "white",
     padding: "28px",
     borderRadius: "16px"
+  },
+
+  notificationPanel: {
+    background: "white",
+    padding: "22px",
+    borderRadius: "12px",
+    marginTop: "22px",
+    marginBottom: "25px",
+    boxShadow: "0 2px 8px rgba(0,0,0,0.08)"
+  },
+
+  notificationPanelHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: "16px",
+    marginBottom: "15px",
+    flexWrap: "wrap"
+  },
+
+  notificationTitle: {
+    margin: 0,
+    color: "#193f31",
+    fontSize: "22px"
+  },
+
+  notificationSubtitle: {
+    margin: "6px 0 0",
+    color: "#667085"
+  },
+
+  markReadButton: {
+    padding: "9px 13px",
+    background: "#eaf4ed",
+    color: "#176b4d",
+    border: "1px solid #b9d8c7",
+    borderRadius: "7px",
+    cursor: "pointer",
+    fontWeight: "bold"
+  },
+
+  notificationList: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "12px"
+  },
+
+  notificationItem: {
+    padding: "15px",
+    borderRadius: "8px",
+    border: "1px solid #dce8e4"
+  },
+
+  notificationUnread: {
+    background: "#f0fdf4",
+    borderLeft: "5px solid #176b4d"
+  },
+
+  notificationRead: {
+    background: "#f8faf9",
+    borderLeft: "5px solid #dce8e4"
+  },
+
+  notificationItemHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    gap: "12px",
+    alignItems: "center"
+  },
+
+  notificationStatus: {
+    textTransform: "capitalize",
+    color: "#176b4d",
+    fontWeight: "bold",
+    fontSize: "13px"
+  },
+
+  notificationMessage: {
+    margin: "8px 0",
+    color: "#344054"
+  },
+
+  notificationTime: {
+    color: "#667085"
+  },
+
+  notificationEmpty: {
+    margin: 0,
+    color: "#667085"
   },
 
   profileMain: {

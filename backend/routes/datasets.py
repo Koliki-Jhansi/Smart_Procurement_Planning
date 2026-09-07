@@ -430,10 +430,9 @@ def upload_dataset():
         # CHECK REQUIRED COLUMNS
         # =============================================
 
-        required =
-            REQUIRED_COLUMNS[
-                dataset_type
-            ]
+        required = REQUIRED_COLUMNS[
+            dataset_type
+        ]
 
 
         missing = [

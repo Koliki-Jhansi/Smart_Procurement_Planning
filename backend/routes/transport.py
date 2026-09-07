@@ -247,7 +247,7 @@ def calculate_transport():
 
         }
 
-        print("✅ TRANSPORT CALCULATED")
+        print(" TRANSPORT CALCULATED")
         print(response)
 
         return jsonify(
@@ -273,7 +273,7 @@ def calculate_transport():
     except Exception as error:
 
         print(
-            "❌ Transport calculation error:",
+            " Transport calculation error:",
             str(error)
         )
 
