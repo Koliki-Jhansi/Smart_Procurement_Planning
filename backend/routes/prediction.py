@@ -98,27 +98,27 @@ try:
 
     load_prediction_model()
 
-    print("✅ Crop prediction model loaded")
+    print(" Crop prediction model loaded")
 
     print(
-        "📍 District classes:",
+        " District classes:",
         list(district_encoder.classes_)
     )
 
     print(
-        "🌾 Crop classes:",
+        " Crop classes:",
         list(crop_encoder.classes_)
     )
 
     print(
-        "🌦️ Season classes:",
+        " Season classes:",
         list(season_encoder.classes_)
     )
 
 except Exception as e:
 
     print(
-        "❌ Model loading error:",
+        " Model loading error:",
         e
     )
 
@@ -165,7 +165,7 @@ def predict():
     data = request.get_json() or {}
 
     print("===================================")
-    print("📥 Prediction request:", data)
+    print(" Prediction request:", data)
 
     # =================================================
     # GET INPUT
@@ -192,17 +192,17 @@ def predict():
     )
 
     print(
-        "📍 District received:",
+        " District received:",
         district_input
     )
 
     print(
-        "🌾 Crop received:",
+        " Crop received:",
         crop_input
     )
 
     print(
-        "🌦️ Season received:",
+        " Season received:",
         season_input
     )
 
@@ -265,17 +265,17 @@ def predict():
     )
 
     print(
-        "✅ Matched district:",
+        " Matched district:",
         district
     )
 
     print(
-        "✅ Matched crop:",
+        " Matched crop:",
         crop
     )
 
     print(
-        "✅ Matched season:",
+        " Matched season:",
         season
     )
 
@@ -419,7 +419,7 @@ def predict():
     except Exception as e:
 
         print(
-            "❌ Encoding error:",
+            " Encoding error:",
             e
         )
 
@@ -450,7 +450,7 @@ def predict():
     ])
 
     print(
-        "📊 Encoded features:",
+        " Encoded features:",
         features
     )
 
@@ -467,7 +467,7 @@ def predict():
     except Exception as e:
 
         print(
-            "❌ Prediction error:",
+            " Prediction error:",
             e
         )
 
@@ -493,7 +493,7 @@ def predict():
     )
 
     print(
-        "🌾 Predicted production:",
+        " Predicted production:",
         prediction
     )
 

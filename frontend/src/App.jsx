@@ -358,16 +358,29 @@ function App() {
     requestData
   ) => {
 
+    const createdRequest =
+      requestData ||
+      (
+        status &&
+        typeof status === "object"
+          ? status
+          : {}
+      );
+
+    const createdStatus =
+      typeof status === "string"
+        ? status
+        : createdRequest?.status;
+
     console.log(
       "Request sent:",
-      requestData
+      createdRequest
     );
 
     setProcurementRequest({
-      ...requestData,
+      ...createdRequest,
       status:
-        status ||
-        requestData?.status ||
+        createdStatus ||
         "pending"
     });
 

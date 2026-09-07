@@ -79,7 +79,7 @@ try:
         )
 
         print(
-            "✅ Government: crop prediction model loaded"
+            " Government: crop prediction model loaded"
         )
 
 
@@ -90,7 +90,7 @@ try:
         )
 
         print(
-            "✅ Government: crop encoder loaded"
+            " Government: crop encoder loaded"
         )
 
 
@@ -101,7 +101,7 @@ try:
         )
 
         print(
-            "✅ Government: district encoder loaded"
+            " Government: district encoder loaded"
         )
 
 
@@ -112,14 +112,14 @@ try:
         )
 
         print(
-            "✅ Government: season encoder loaded"
+            " Government: season encoder loaded"
         )
 
 
 except Exception as e:
 
     print(
-        "⚠️ Government model loading error:",
+        " Government model loading error:",
         str(e)
     )
 
@@ -414,7 +414,7 @@ def government_production():
     except Exception as e:
 
         print(
-            "❌ Government production error:",
+            " Government production error:",
             str(e)
         )
 

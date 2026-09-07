@@ -171,7 +171,7 @@ def load_centers():
     if not centers_file:
 
         print("")
-        print("❌ Procurement centers CSV file not found")
+        print(" Procurement centers CSV file not found")
         print("Expected folder:")
         print(DATASETS_DIR)
         print("")
@@ -182,7 +182,7 @@ def load_centers():
 
         print("")
         print("==========================================")
-        print("📂 PROCUREMENT CENTERS FILE")
+        print(" PROCUREMENT CENTERS FILE")
         print("==========================================")
         print(centers_file)
         print("==========================================")
@@ -197,7 +197,7 @@ def load_centers():
         ]
 
         print(
-            f"✅ Procurement centers loaded: {len(df)}"
+            f" Procurement centers loaded: {len(df)}"
         )
 
         print(
@@ -212,7 +212,7 @@ def load_centers():
     except Exception as error:
 
         print(
-            "❌ Error loading procurement centers:",
+            " Error loading procurement centers:",
             str(error)
         )
 
@@ -814,7 +814,7 @@ def get_procurement_centers():
 
         print("")
         print("==========================================")
-        print("❌ PROCUREMENT CENTER ERROR")
+        print(" PROCUREMENT CENTER ERROR")
         print("==========================================")
         print(
             str(error)

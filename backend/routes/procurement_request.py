@@ -1,6 +1,7 @@
 from flask import Blueprint, jsonify, request
 
 from extensions import db
+from models.notification import Notification
 from models.procurement_request import ProcurementRequest
 
 
@@ -227,6 +228,17 @@ def create_procurement_request():
             transport_cost = 0
 
 
+        total_cost = (
+
+            data.get("total_cost")
+
+            if data.get("total_cost") is not None
+
+            else transport_cost
+
+        )
+
+
         # =================================================
         # VALIDATION
         # =================================================
@@ -317,6 +329,11 @@ def create_procurement_request():
             )
 
 
+            total_cost = float(
+                total_cost
+            )
+
+
         except (
             ValueError,
             TypeError
@@ -393,6 +410,8 @@ def create_procurement_request():
             ),
 
             transport_cost=transport_cost,
+
+            total_cost=total_cost,
 
             status="pending"
 
@@ -795,6 +814,43 @@ def update_procurement_request_status(request_id):
             final_status
 
         )
+
+
+        if (
+            final_status in ["approved", "rejected"]
+            and final_status != old_status
+        ):
+
+            if final_status == "approved":
+
+                title = "Procurement request approved"
+
+                message = (
+                    f"Your {procurement_request.crop} request "
+                    f"for {procurement_request.quantity} tons "
+                    f"at {procurement_request.center_name} was approved."
+                )
+
+            else:
+
+                title = "Procurement request rejected"
+
+                message = (
+                    f"Your {procurement_request.crop} request "
+                    f"for {procurement_request.quantity} tons "
+                    f"at {procurement_request.center_name} was rejected."
+                )
+
+
+            db.session.add(
+                Notification(
+                    farmer_id=procurement_request.farmer_id,
+                    procurement_request_id=procurement_request.id,
+                    title=title,
+                    message=message,
+                    status=final_status
+                )
+            )
 
 
         db.session.commit()

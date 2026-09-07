@@ -61,11 +61,11 @@ try:
         )
     )
 
-    print("✅ Farmer crop prediction model loaded")
+    print(" Farmer crop prediction model loaded")
 
 except Exception as error:
 
-    print("❌ Farmer prediction model loading failed")
+    print(" Farmer prediction model loading failed")
     print(error)
 
     crop_prediction_model = None
@@ -351,7 +351,7 @@ def predict_crop():
 
     except Exception as error:
 
-        print("❌ Crop prediction error:")
+        print(" Crop prediction error:")
         print(error)
 
 

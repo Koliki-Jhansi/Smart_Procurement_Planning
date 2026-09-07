@@ -11,6 +11,7 @@ from routes.otp import otp_bp
 from routes.government import government_bp
 from routes.prediction import prediction_bp
 from routes.transport import transport_bp
+from routes.notifications import notifications_bp
 
 from models.user import User
 from models.training_data import TrainingData
@@ -20,6 +21,7 @@ from models.location_data import LocationData
 from models.transport_data import TransportData
 from models.procurement_history import ProcurementHistory
 from models.procurement_request import ProcurementRequest
+from models.notification import Notification
 
 
 app = Flask(__name__)
@@ -68,6 +70,8 @@ app.register_blueprint(government_bp)
 
 app.register_blueprint(prediction_bp)
 
+app.register_blueprint(notifications_bp)
+
 app.register_blueprint(
     transport_bp,
     url_prefix="/api/transport"
@@ -109,6 +113,7 @@ def api_info():
             "farmer_requests": "/api/procurement-requests/farmer/<farmer_id>",
             "single_procurement_request": "/api/procurement-requests/<request_id>",
             "update_request_status": "/api/procurement-requests/<request_id>/status",
+            "farmer_notifications": "/api/notifications/farmer/<farmer_id>",
             "transport_calculation": "/api/transport/calculate"
         }
     })

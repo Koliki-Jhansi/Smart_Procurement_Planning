@@ -8,15 +8,18 @@ with app.app_context():
 
     mobile = "9999999999"
     password = "admin123"
-    name = "System Admin"
+    full_name = "System Admin"
+
+    db.create_all()
 
     existing = User.query.filter_by(
         mobile_number=mobile
     ).first()
 
     if existing:
+        existing.full_name = full_name
         existing.role = "admin"
-        existing.password = generate_password_hash(password)
+        existing.password_hash = generate_password_hash(password)
 
         db.session.commit()
 
@@ -25,8 +28,8 @@ with app.app_context():
     else:
         admin = User(
             mobile_number=mobile,
-            password=generate_password_hash(password),
-            name=name,
+            password_hash=generate_password_hash(password),
+            full_name=full_name,
             role="admin"
         )
 

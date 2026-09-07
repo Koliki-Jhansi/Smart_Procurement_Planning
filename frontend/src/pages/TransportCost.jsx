@@ -9,6 +9,7 @@ function TransportCost({
   selectedCrop,
   goBack,
   onOpenProcurementRequest,
+  onRequestSent,
 }) {
   const [quantity, setQuantity] = useState("");
   const [distance, setDistance] = useState("");
@@ -54,11 +55,11 @@ function TransportCost({
   // =====================================================
 
   const farmerId =
-    user?.farmer_id ||
-    user?.farmerId ||
     user?.id ||
     user?.user_id ||
     user?.userId ||
+    user?.farmer_id ||
+    user?.farmerId ||
     user?.farmer?.id ||
     "";
 
@@ -725,8 +726,6 @@ function TransportCost({
       if (onRequestSent) {
         setTimeout(() => {
           onRequestSent(
-            requestData.status ||
-            "pending",
             requestData
           );
         }, 1000);

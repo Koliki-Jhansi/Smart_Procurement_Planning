@@ -16,5 +16,9 @@ backend/instance/
 frontend/node_modules/
 frontend/dist/
 
+# Local project data and generated build output
+backend/instance/smart_procurement.db
+backend/datasets/
+
 .vscode/
 *.log
