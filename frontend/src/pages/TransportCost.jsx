@@ -12,6 +12,16 @@ function TransportCost({
   onRequestSent,
 }) {
   const [quantity, setQuantity] = useState("");
+  const [quantityManuallyEdited, setQuantityManuallyEdited] = useState(false);
+
+  const savedPrediction = (() => {
+    try {
+      const raw = sessionStorage.getItem("latestCropPrediction");
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  })();
   const [distance, setDistance] = useState("");
   const [vehicleType, setVehicleType] =
     useState("Medium Truck");
@@ -25,6 +35,18 @@ function TransportCost({
     useState("");
 
   const [result, setResult] = useState(null);
+
+  // Always derive the displayed cost-per-ton from the CURRENT transport
+  // quantity and the returned total cost. This keeps the summary and the
+  // quantity field synchronized without hardcoding any prediction value.
+  const displayedCostPerTon = (() => {
+    const q = Number(quantity);
+    const total = Number(result?.totalCost);
+    if (!result || !Number.isFinite(q) || q <= 0 || !Number.isFinite(total)) {
+      return 0;
+    }
+    return total / q;
+  })();
 
   // =====================================================
   // NORMALIZE SELECTED CENTER
@@ -103,6 +125,64 @@ function TransportCost({
         "";
 
   // =====================================================
+  // PREDICTED PRODUCTION (TONS ONLY)
+  // Never use cultivated area / land area as quantity.
+  // =====================================================
+
+  const currentCropName = String(crop || "").trim().toLowerCase();
+  const savedCropName = String(
+    savedPrediction?.crop ?? savedPrediction?.crop_name ?? ""
+  ).trim().toLowerCase();
+
+  // A session fallback is allowed only for the SAME crop. This prevents an
+  // old crop prediction from silently becoming the quantity for a new crop.
+  const safeSavedPrediction =
+    currentCropName && savedCropName === currentCropName
+      ? savedPrediction
+      : null;
+
+  const predictedQuantity = Number(
+    selectedCrop?.predicted_production ??
+    selectedCrop?.estimated_production ??
+    selectedCrop?.quantity_tons ??
+    selectedCrop?.predictedProduction ??
+    selectedCrop?.estimatedProduction ??
+    selectedCrop?.production ??
+    selectedCenter?.selectedCrop?.predicted_production ??
+    selectedCenter?.selectedCrop?.estimated_production ??
+    selectedCenter?.selectedCrop?.quantity_tons ??
+    selectedCenter?.predicted_production ??
+    selectedCenter?.estimated_production ??
+    safeSavedPrediction?.predicted_production ??
+    safeSavedPrediction?.estimated_production ??
+    safeSavedPrediction?.quantity_tons ??
+    safeSavedPrediction?.production ??
+    0
+  );
+
+  // Prediction owns the initial transport quantity. After the farmer types,
+  // never overwrite the farmer's manual value. Area/hectares is never read here.
+  useEffect(() => {
+    if (
+      !quantityManuallyEdited &&
+      Number.isFinite(predictedQuantity) &&
+      predictedQuantity > 0
+    ) {
+      const nextQuantity = String(Math.round(predictedQuantity * 100) / 100);
+
+      // If the prediction arrives/changes after an earlier calculation,
+      // invalidate that old result. This prevents the input from showing
+      // 21.92 while the cost cards still belong to an older quantity.
+      if (String(quantity) !== nextQuantity) {
+        setQuantity(nextQuantity);
+        setResult(null);
+        setSuccessMessage("");
+        setError("");
+      }
+    }
+  }, [predictedQuantity, quantityManuallyEdited, quantity]);
+
+  // =====================================================
   // CENTER ID
   // =====================================================
 
@@ -155,6 +235,57 @@ function TransportCost({
       : centerDistrict;
 
   // =====================================================
+  // FARMER + CENTER COORDINATES
+  // =====================================================
+
+  const originLatitude = Number(
+    user?.latitude ??
+    user?.Latitude ??
+    user?.lat ??
+    user?.farmer?.latitude ??
+    user?.farmer?.Latitude
+  );
+
+  const originLongitude = Number(
+    user?.longitude ??
+    user?.Longitude ??
+    user?.lon ??
+    user?.lng ??
+    user?.farmer?.longitude ??
+    user?.farmer?.Longitude
+  );
+
+  const destinationLatitude = Number(
+    normalizedCenter?.latitude ??
+    normalizedCenter?.Latitude ??
+    normalizedCenter?.lat
+  );
+
+  const destinationLongitude = Number(
+    normalizedCenter?.longitude ??
+    normalizedCenter?.Longitude ??
+    normalizedCenter?.lon ??
+    normalizedCenter?.lng
+  );
+
+  const validLatitude = (value) =>
+    Number.isFinite(value) &&
+    value >= -90 &&
+    value <= 90;
+
+  const validLongitude = (value) =>
+    Number.isFinite(value) &&
+    value >= -180 &&
+    value <= 180;
+
+  const coordinatesAvailable =
+    validLatitude(originLatitude) &&
+    validLongitude(originLongitude) &&
+    validLatitude(destinationLatitude) &&
+    validLongitude(destinationLongitude);
+
+
+  // =====================================================
   // DEBUG USER AND CENTER
   // =====================================================
 
@@ -185,6 +316,11 @@ function TransportCost({
           centerName,
           centerDistrict,
           centerLocation,
+          originLatitude,
+          originLongitude,
+          destinationLatitude,
+          destinationLongitude,
+          coordinatesAvailable,
           normalizedCenter,
         },
         null,
@@ -200,10 +336,19 @@ function TransportCost({
   // =====================================================
 
   useEffect(() => {
+    // Distance comes automatically from the selected procurement center.
+    // Support both a plain center object and the wrapper returned by
+    // ProcurementCenter ({ center, selectedCrop, ... }).
     const centerDistance =
       normalizedCenter?.distance_km ??
       normalizedCenter?.Distance_KM ??
       normalizedCenter?.distance ??
+      selectedCenter?.distance_km ??
+      selectedCenter?.Distance_KM ??
+      selectedCenter?.distance ??
+      selectedCenter?.center?.distance_km ??
+      selectedCenter?.center?.Distance_KM ??
+      selectedCenter?.center?.distance ??
       "";
 
     if (
@@ -213,7 +358,12 @@ function TransportCost({
     ) {
       setDistance(String(centerDistance));
     }
-  }, [selectedCenter]);
+  }, [
+    selectedCenter,
+    normalizedCenter?.distance_km,
+    normalizedCenter?.Distance_KM,
+    normalizedCenter?.distance,
+  ]);
 
   // =====================================================
   // VEHICLES
@@ -267,12 +417,21 @@ function TransportCost({
       return;
     }
 
+    /*
+      Preferred calculation:
+      farmer coordinates -> selected center coordinates
+      -> backend road distance.
+
+      Old distance input remains only as a fallback so
+      existing functionality is not removed.
+    */
+
     if (
       !Number.isFinite(numericDistance) ||
-      numericDistance < 0
+      numericDistance <= 0
     ) {
       setError(
-        "Please enter a valid distance."
+        "Please enter or calculate a valid one-way distance."
       );
       return;
     }
@@ -280,6 +439,9 @@ function TransportCost({
     setLoading(true);
 
     try {
+      // This matches the Flask endpoint that was verified directly in
+      // PowerShell: quantity (tons), one-way distance (km), vehicle name.
+      // Never send hectares/area as quantity.
       const payload = {
         quantity: numericQuantity,
         distance: numericDistance,
@@ -288,6 +450,8 @@ function TransportCost({
 
       console.log("======================================");
       console.log("SENDING TRANSPORT CALCULATION");
+      console.log("PREDICTED PRODUCTION (TONS):", predictedQuantity);
+      console.log("EDITABLE TRANSPORT QUANTITY (TONS):", numericQuantity);
       console.log(JSON.stringify(payload, null, 2));
       console.log("======================================");
 
@@ -314,6 +478,24 @@ function TransportCost({
       }
 
       setResult(response.data);
+
+      const calculatedOneWayDistance = Number(
+        response.data?.oneWayDistance ??
+        response.data?.distance
+      );
+
+      if (
+        Number.isFinite(
+          calculatedOneWayDistance
+        ) &&
+        calculatedOneWayDistance > 0
+      ) {
+        setDistance(
+          String(
+            calculatedOneWayDistance
+          )
+        );
+      }
     } catch (err) {
       console.error(
         "TRANSPORT CALCULATION ERROR:",
@@ -443,7 +625,12 @@ function TransportCost({
 
     const numericFarmerId = Number(farmerId);
     const numericQuantity = Number(quantity);
-    const numericDistance = Number(distance);
+
+    const numericDistance = Number(
+      result?.oneWayDistance ??
+      result?.distance ??
+      distance
+    );
 
     const numericTransportCost = Number(
       result?.totalCost ??
@@ -812,287 +999,80 @@ function TransportCost({
       </div>
 
       <div style={styles.container}>
-
-        {/* SUMMARY */}
-
-        <div style={styles.summaryGrid}>
-
-          <div style={styles.card}>
-            <h3>
-              Farmer
-            </h3>
-
-            <p>
-              {String(farmerName)}
-            </p>
-
-            <p>
-              {String(
-                farmerDistrict || "-"
-              )}
-            </p>
-          </div>
-
-          <div style={styles.card}>
-            <h3>
-              Selected Crop
-            </h3>
-
-            <p>
-              {String(
-                crop || "-"
-              )}
-            </p>
-          </div>
-
-          <div style={styles.card}>
-            <h3>
-              Procurement Center
-            </h3>
-
-            <p>
-              {String(centerName)}
-            </p>
-
-            <p>
-              {String(centerLocation)}
-            </p>
-          </div>
-
-        </div>
-
-        {/* ERROR */}
-
         {error && (
-          <div style={styles.errorBox}>
-            <strong>
-              Unable to continue
-            </strong>
-
-            <p>
-              {String(error)}
-            </p>
-          </div>
+          <div style={styles.errorBox}><strong>Unable to continue</strong><p>{String(error)}</p></div>
         )}
-
-        {/* SUCCESS */}
-
         {successMessage && (
-          <div style={styles.successBox}>
-            <strong>
-              Request Sent Successfully
-            </strong>
-
-            <p>
-              {String(successMessage)}
-            </p>
-          </div>
+          <div style={styles.successBox}><strong>Request Sent Successfully</strong><p>{String(successMessage)}</p></div>
         )}
 
-        {/* TRANSPORT DETAILS */}
+        <div style={styles.workspace}>
+          <section style={styles.detailsPanel}>
+            <div style={styles.sectionEyebrow}>TRANSPORT PLANNER</div>
+            <h2 style={styles.sectionTitle}>Enter Transport Details</h2>
+            <p style={styles.sectionText}>Review the shipment values and calculate the estimated transportation cost.</p>
 
-        <div style={styles.card}>
-
-          <h2>
-            Transport Details
-          </h2>
-
-          <div style={styles.formGrid}>
-
-            <div>
-              <label>
-                Crop
-              </label>
-
-              <input
-                value={String(crop)}
-                readOnly
-                style={styles.input}
-              />
+            <div style={styles.fieldBlock}>
+              <label style={styles.label}>Quantity (Tons)</label>
+              <input type="number" min="0" step="0.01" value={quantity}
+                onChange={(e) => { setQuantityManuallyEdited(true); setQuantity(e.target.value); setResult(null); setSuccessMessage(""); }} style={styles.input} />
+              <div style={styles.helperText}>Predicted production: {Number.isFinite(predictedQuantity) && predictedQuantity > 0 ? `${predictedQuantity.toFixed(2)} tons` : "not available"}. Quantity is editable.</div>
             </div>
 
-            <div>
-              <label>
-                Quantity (Tons)
-              </label>
-
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={quantity}
-                onChange={(e) =>
-                  setQuantity(
-                    e.target.value
-                  )
-                }
-                style={styles.input}
-              />
+            <div style={styles.fieldBlock}>
+              <label style={styles.label}>One Way Distance (KM)</label>
+              <input type="number" min="0" step="0.01" value={distance} readOnly={coordinatesAvailable}
+                onChange={(e) => { setDistance(e.target.value); setResult(null); setSuccessMessage(""); }}
+                placeholder={coordinatesAvailable ? "Calculated from coordinates" : "Fallback distance"} style={styles.input} />
             </div>
 
-            <div>
-              <label>
-                Distance (KM)
-              </label>
-
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={distance}
-                onChange={(e) =>
-                  setDistance(
-                    e.target.value
-                  )
-                }
-                style={styles.input}
-              />
-            </div>
-
-            <div>
-              <label>
-                Vehicle
-              </label>
-
-              <select
-                value={vehicleType}
-                onChange={(e) =>
-                  setVehicleType(
-                    e.target.value
-                  )
-                }
-                style={styles.input}
-              >
-                {vehicles.map(
-                  (vehicle) => (
-                    <option
-                      key={vehicle.name}
-                      value={vehicle.name}
-                    >
-                      {vehicle.name}
-                      {" "}
-                      ({vehicle.capacity} Tons)
-                    </option>
-                  )
-                )}
+            <div style={styles.fieldBlock}>
+              <label style={styles.label}>Vehicle Type</label>
+              <select value={vehicleType} onChange={(e) => { setVehicleType(e.target.value); setResult(null); setSuccessMessage(""); }} style={styles.input}>
+                {vehicles.map((vehicle) => (
+                  <option key={vehicle.name} value={vehicle.name}>{vehicle.name} ({vehicle.capacity} Tons)</option>
+                ))}
               </select>
             </div>
 
-          </div>
-
-          <button
-            onClick={calculateTransport}
-            disabled={loading}
-            style={styles.calculateButton}
-          >
-            {loading
-              ? "Calculating..."
-              : "Calculate Transportation Cost"}
-          </button>
-
-        </div>
-
-        {/* RESULT */}
-
-        {result && (
-          <div style={styles.resultCard}>
-
-            <h2>
-              Transportation Cost Result
-            </h2>
-
-            <div style={styles.resultGrid}>
-
-              <ResultItem
-                label="Vehicle"
-                value={
-                  String(
-                    result.vehicle ||
-                    vehicleType
-                  )
-                }
-              />
-
-              <ResultItem
-                label="Trips"
-                value={
-                  String(
-                    result.trips || 0
-                  )
-                }
-              />
-
-              <ResultItem
-                label="Total Distance"
-                value={`${result.totalDistance || 0} KM`}
-              />
-
-              <ResultItem
-                label="Fuel Required"
-                value={`${result.fuelRequired || 0} Liters`}
-              />
-
-              <ResultItem
-                label="Fuel Cost"
-                value={`₹${formatCurrency(
-                  result.fuelCost
-                )}`}
-              />
-
-              <ResultItem
-                label="Driver Cost"
-                value={`₹${formatCurrency(
-                  result.driverCost
-                )}`}
-              />
-
-              <ResultItem
-                label="Loading Cost"
-                value={`₹${formatCurrency(
-                  result.loadingCost
-                )}`}
-              />
-
-              <ResultItem
-                label="Unloading Cost"
-                value={`₹${formatCurrency(
-                  result.unloadingCost
-                )}`}
-              />
-
-              <ResultItem
-                label="Cost Per Ton"
-                value={`₹${formatCurrency(
-                  result.costPerTon
-                )}`}
-              />
-
-              <ResultItem
-                label="Total Cost"
-                value={`₹${formatCurrency(
-                  result.totalCost
-                )}`}
-              />
-
-            </div>
-
-            <button
-              onClick={
-                sendProcurementRequest
-              }
-              disabled={
-                sendingRequest
-              }
-              style={styles.sendButton}
-            >
-              {sendingRequest
-                ? "Sending Request..."
-                : "Send Procurement Request"}
+            <button onClick={calculateTransport} disabled={loading} style={styles.calculateButton}>
+              {loading ? "Calculating..." : "Calculate Transportation Cost"}
             </button>
+          </section>
 
-          </div>
-        )}
-
+          <section style={styles.resultsPanel}>
+            <div style={styles.sectionEyebrow}>COST ESTIMATE</div>
+            <h2 style={styles.sectionTitle}>Transportation Result</h2>
+            {!result ? (
+              <div style={styles.emptyResult}>
+                <div style={styles.emptyResultIcon}>₹</div>
+                <h3 style={{margin:"0 0 8px"}}>Your estimate will appear here</h3>
+                <p style={{margin:0}}>Enter the transport details and calculate to view the complete cost breakdown.</p>
+              </div>
+            ) : (
+              <>
+                <div style={styles.totalHero}>
+                  <span style={styles.totalLabel}>Estimated Transport Cost</span>
+                  <strong style={styles.totalValue}>₹{formatCurrency(result.totalCost)}</strong>
+                  <span style={styles.totalSub}>₹{formatCurrency(displayedCostPerTon)} per ton</span>
+                </div>
+                <div style={styles.resultGrid}>
+                  <ResultItem label="One Way Distance" value={`${result.oneWayDistance ?? result.distance ?? 0} KM`} />
+                  <ResultItem label="Total Distance" value={`${result.totalDistance || 0} KM`} />
+                  <ResultItem label="Fuel Required" value={`${result.fuelRequired || 0} Liters`} />
+                  <ResultItem label="Fuel Cost" value={`₹${formatCurrency(result.fuelCost)}`} />
+                  <ResultItem label="Driver Cost" value={`₹${formatCurrency(result.driverCost)}`} />
+                  <ResultItem label="Loading Cost" value={`₹${formatCurrency(result.loadingCost)}`} />
+                  <ResultItem label="Unloading Cost" value={`₹${formatCurrency(result.unloadingCost)}`} />
+                  <ResultItem label="Cost Per Ton" value={`₹${formatCurrency(displayedCostPerTon)}`} />
+                </div>
+                <button onClick={sendProcurementRequest} disabled={sendingRequest} style={styles.sendButton}>
+                  {sendingRequest ? "Sending Request..." : "Send Procurement Request"}
+                </button>
+              </>
+            )}
+          </section>
+        </div>
       </div>
 
     </div>
@@ -1127,7 +1107,7 @@ function ResultItem({
 const styles = {
   page: {
     minHeight: "100vh",
-    background: "#f4f7f5",
+    background: "linear-gradient(180deg,#f4f8f5 0%,#edf4ef 100%)",
     fontFamily: "Arial, sans-serif",
   },
 
@@ -1141,9 +1121,9 @@ const styles = {
   },
 
   container: {
-    maxWidth: "1200px",
+    maxWidth: "1280px",
     margin: "auto",
-    padding: "30px",
+    padding: "26px",
   },
 
   summaryGrid: {
@@ -1175,8 +1155,10 @@ const styles = {
     padding: "12px",
     marginTop: "8px",
     boxSizing: "border-box",
-    borderRadius: "6px",
-    border: "1px solid #ccc",
+    borderRadius: "11px",
+    border: "1px solid #d5e1da",
+    background: "#fbfdfb",
+    outline: "none",
   },
 
   calculateButton: {
@@ -1185,8 +1167,10 @@ const styles = {
     background: "#1f4d3a",
     color: "white",
     border: "none",
-    borderRadius: "6px",
+    borderRadius: "11px",
     cursor: "pointer",
+    width: "100%",
+    fontWeight: 750,
   },
 
   backButton: {
@@ -1222,28 +1206,35 @@ const styles = {
       "0 3px 10px rgba(0,0,0,0.08)",
   },
 
-  resultGrid: {
+  workspace: {
     display: "grid",
-    gridTemplateColumns:
-      "repeat(auto-fit, minmax(200px, 1fr))",
-    gap: "15px",
+    gridTemplateColumns: "minmax(300px, 0.82fr) minmax(0, 1.45fr)",
+    gap: "22px",
+    alignItems: "start",
   },
-
-  resultItem: {
-    background: "#f5f8f6",
-    padding: "15px",
-    borderRadius: "8px",
+  detailsPanel: {
+    background: "#ffffff", padding: "26px", borderRadius: "20px",
+    border: "1px solid #e1ebe5", boxShadow: "0 14px 38px rgba(25,73,51,0.08)",
   },
-
-  sendButton: {
-    marginTop: "25px",
-    padding: "15px 28px",
-    background: "#2d6a4f",
-    color: "white",
-    border: "none",
-    borderRadius: "6px",
-    cursor: "pointer",
+  resultsPanel: {
+    background: "#ffffff", padding: "26px", borderRadius: "20px",
+    border: "1px solid #e1ebe5", boxShadow: "0 14px 38px rgba(25,73,51,0.08)", minHeight: "480px",
   },
+  sectionEyebrow: { fontSize: "11px", letterSpacing: "1.5px", fontWeight: 800, color: "#2d7a55", marginBottom: "7px" },
+  sectionTitle: { margin: "0 0 8px", color: "#173f30", fontSize: "24px" },
+  sectionText: { margin: "0 0 24px", color: "#6a7e74", fontSize: "14px", lineHeight: 1.55 },
+  fieldBlock: { marginBottom: "18px" },
+  label: { display: "block", color: "#294d3d", fontSize: "13px", fontWeight: 750, marginBottom: "7px" },
+  helperText: { marginTop: "7px", fontSize: "12px", color: "#71847a", lineHeight: 1.4 },
+  emptyResult: { minHeight: "350px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", color: "#71847a", padding: "25px" },
+  emptyResultIcon: { width: "58px", height: "58px", borderRadius: "18px", display: "grid", placeItems: "center", background: "#eaf5ee", color: "#236b49", fontSize: "26px", fontWeight: 800, marginBottom: "15px" },
+  totalHero: { display: "flex", flexDirection: "column", padding: "20px 22px", margin: "20px 0", borderRadius: "17px", background: "linear-gradient(135deg,#174c36,#2f7d57)", color: "white" },
+  totalLabel: { fontSize: "12px", fontWeight: 700, opacity: 0.85, textTransform: "uppercase", letterSpacing: "1px" },
+  totalValue: { fontSize: "34px", lineHeight: 1.2, marginTop: "5px" },
+  totalSub: { fontSize: "13px", opacity: 0.82, marginTop: "5px" },
+  resultGrid: { display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: "11px" },
+  resultItem: { background: "#f6faf7", padding: "13px", borderRadius: "13px", border: "1px solid #e3ece6", minHeight: "66px" },
+  sendButton: { width: "100%", marginTop: "20px", padding: "14px 22px", background: "#2d6a4f", color: "white", border: "none", borderRadius: "11px", cursor: "pointer", fontWeight: 750 },
 };
 
 export default TransportCost;

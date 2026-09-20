@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
+import WarehousePrediction from "./WarehousePrediction";
 
 const API = "http://127.0.0.1:5000";
 
@@ -10,6 +11,11 @@ function GovernmentDashboard({ user, onLogout }) {
   const [warehouseData, setWarehouseData] = useState(null);
   const [requests, setRequests] = useState([]);
   const [centers, setCenters] = useState([]);
+
+  const [appointments, setAppointments] = useState([]);
+  const [appointmentInputs, setAppointmentInputs] = useState({});
+  const [receivedQuantities, setReceivedQuantities] = useState({});
+  const [loadingAppointments, setLoadingAppointments] = useState(false);
 
   const [loadingCrop, setLoadingCrop] = useState(false);
   const [loadingWarehouse, setLoadingWarehouse] = useState(false);
@@ -220,64 +226,174 @@ function GovernmentDashboard({ user, onLogout }) {
     }
   };
 
-  const updateRequestStatus = async (requestId, status) => {
+  const loadAppointments = async () => {
     try {
+      setLoadingAppointments(true);
+
+      const response = await axios.get(
+        `${API}/api/appointments`
+      );
+
+      if (response.data.success) {
+        setAppointments(
+          response.data.appointments || []
+        );
+      }
+    } catch (error) {
+      console.error(
+        "Appointment loading error:",
+        error
+      );
+    } finally {
+      setLoadingAppointments(false);
+    }
+  };
+
+  const updateRequestStatus = async (
+    requestId,
+    status,
+    appointmentDate = "",
+    appointmentTime = ""
+  ) => {
+    try {
+      const payload = {
+        status
+      };
+
+      if (
+        status === "approved" ||
+        status === "accepted"
+      ) {
+        if (!appointmentDate || !appointmentTime) {
+          alert(
+            "Select appointment date and time before approval."
+          );
+          return;
+        }
+
+        payload.appointment_date =
+          appointmentDate;
+
+        payload.appointment_time =
+          appointmentTime;
+      }
+
       const response = await axios.put(
         `${API}/api/procurement-requests/${requestId}/status`,
-        {
-          status
-        },
+        payload,
         {
           headers: {
-            "X-Admin-Mobile": user?.mobile_number || ""
+            "X-Admin-Mobile":
+              user?.mobile_number || ""
           }
         }
       );
 
-      if (response.data.success) {
-        const updatedRequest =
-          response.data.request || response.data.data;
-
-        setRequests((previous) =>
-          previous.map((request) =>
-            request.id === requestId
-              ? {
-                  ...request,
-                  ...(updatedRequest || {}),
-                  status:
-                    updatedRequest?.status || status
-                }
-              : request
-          )
-        );
-
-        const selectedRequest = requests.find(
-          (item) => item.id === requestId
-        );
-
-        addReport(
-          status === "accepted" || status === "approved"
-            ? "Procurement Request Approved"
-            : "Procurement Request Rejected",
-          selectedRequest
-            ? `${selectedRequest.crop} request of ${selectedRequest.quantity} tons has been ${status}.`
-            : `Request ${requestId} was ${status}.`,
-          status === "accepted" || status === "approved"
-            ? "success"
-            : "warning"
-        );
-      } else {
+      if (!response.data.success) {
         alert(
           response.data.message ||
             "Unable to update request."
         );
+        return;
       }
+
+      const updatedRequest =
+        response.data.request ||
+        response.data.data;
+
+      setRequests((previous) =>
+        previous.map((requestItem) =>
+          requestItem.id === requestId
+            ? {
+                ...requestItem,
+                ...(updatedRequest || {})
+              }
+            : requestItem
+        )
+      );
+
+      await loadRequests();
+      await loadAppointments();
+
+      alert(response.data.message);
+
     } catch (error) {
-      console.error("Status update error:", error);
+      console.error(
+        "Status update error:",
+        error
+      );
 
       alert(
         error.response?.data?.message ||
           "Unable to update request."
+      );
+    }
+  };
+
+  const confirmProcurement = async (
+    appointmentId
+  ) => {
+    const quantity = Number(
+      receivedQuantities[appointmentId]
+    );
+
+    if (
+      !Number.isFinite(quantity) ||
+      quantity <= 0
+    ) {
+      alert(
+        "Enter the actual quantity received at the procurement center."
+      );
+      return;
+    }
+
+    try {
+      const response = await axios.put(
+        `${API}/api/appointments/${appointmentId}/confirm`,
+        {
+          actual_received_quantity:
+            quantity
+        },
+        {
+          headers: {
+            "X-Admin-Mobile":
+              user?.mobile_number || ""
+          }
+        }
+      );
+
+      if (!response.data.success) {
+        alert(
+          response.data.message ||
+            "Unable to confirm procurement."
+        );
+        return;
+      }
+
+      setReceivedQuantities(
+        (previous) => ({
+          ...previous,
+          [appointmentId]: ""
+        })
+      );
+
+      await loadAppointments();
+      await loadRequests();
+
+      alert(
+        response.data.message ||
+          "Procurement confirmed and warehouse stock updated."
+      );
+
+    } catch (error) {
+      console.error(
+        "Confirm procurement error:",
+        error
+      );
+
+      alert(
+        error.response?.data?.message ||
+          "Unable to confirm procurement."
       );
     }
   };
@@ -370,6 +486,14 @@ function GovernmentDashboard({ user, onLogout }) {
 
   useEffect(() => {
     loadRequests();
+    loadAppointments();
+
+    const intervalId = setInterval(() => {
+      loadRequests();
+      loadAppointments();
+    }, 10000);
+
+    return () => clearInterval(intervalId);
   }, []);
 
   const pending = requests.filter(
@@ -385,6 +509,10 @@ function GovernmentDashboard({ user, onLogout }) {
   const rejected = requests.filter(
     (request) => request.status === "rejected"
   ).length;
+
+  const currentRequests = requests.filter(
+    (request) => String(request?.status || "").toLowerCase() === "pending"
+  );
 
   const renderOverview = () => (
     <div>
@@ -479,413 +607,525 @@ function GovernmentDashboard({ user, onLogout }) {
   );
 
   const renderCropProduction = () => (
-    <div>
-      <button
-        style={styles.backButton}
-        onClick={() =>
-          setActiveSection("overview")
-        }
-      >
-        ← Back
-      </button>
-
-      <h2>🌾 Crop Production Prediction</h2>
-
-      <div style={styles.formCard}>
-        <label>District</label>
-
-        <input
-          style={styles.input}
-          value={cropForm.district}
-          onChange={(e) =>
-            setCropForm({
-              ...cropForm,
-              district: e.target.value
-            })
-          }
-          placeholder="Enter district"
-        />
-
-        <label>Crop</label>
-
-        <select
-          style={styles.input}
-          value={cropForm.crop}
-          onChange={(e) =>
-            setCropForm({
-              ...cropForm,
-              crop: e.target.value
-            })
-          }
-        >
-          <option>Paddy</option>
-          <option>Maize</option>
-          <option>Cotton</option>
-          <option>Groundnut</option>
-          <option>Red Gram</option>
-          <option>Green Gram</option>
-          <option>Black Gram</option>
-          <option>Sunflower</option>
-        </select>
-
-        <label>Season</label>
-
-        <select
-          style={styles.input}
-          value={cropForm.season}
-          onChange={(e) =>
-            setCropForm({
-              ...cropForm,
-              season: e.target.value
-            })
-          }
-        >
-          <option>Kharif</option>
-          <option>Rabi</option>
-          <option>Summer</option>
-        </select>
-
-        <label>Year</label>
-
-        <input
-          style={styles.input}
-          type="number"
-          value={cropForm.year}
-          onChange={(e) =>
-            setCropForm({
-              ...cropForm,
-              year: e.target.value
-            })
-          }
-        />
-
-        <label>Present Cultivated Area</label>
-
-        <input
-          style={styles.input}
-          type="number"
-          value={cropForm.area}
-          onChange={(e) =>
-            setCropForm({
-              ...cropForm,
-              area: e.target.value
-            })
-          }
-          placeholder="Area"
-        />
-
-        <button
-          style={styles.primaryButton}
-          onClick={predictCropProduction}
-          disabled={loadingCrop}
-        >
-          {loadingCrop
-            ? "Predicting..."
-            : "Predict Crop Production"}
-        </button>
+    <div style={styles.sectionPage}>
+      <div style={{ ...styles.pageHero, ...styles.cropHero }}>
+        <div>
+          <span style={styles.heroEyebrow}>AGRICULTURAL INTELLIGENCE</span>
+          <h2 style={styles.heroTitle}>Crop Production Prediction</h2>
+          <p style={styles.heroText}>
+            Enter crop information on the left and view the ML prediction on the right.
+          </p>
+        </div>
+        <div style={styles.hero3d}>🌾</div>
       </div>
 
-      {cropData && (
-        <div style={styles.resultCard}>
-          <h3>📊 Production Prediction</h3>
+      <div style={styles.splitWorkspace}>
+        <div style={styles.formPanel}>
+          <div style={styles.panelHeading}>
+            <span style={styles.panelIcon}>⌨</span>
+            <div>
+              <h3 style={styles.panelTitle}>Prediction Inputs</h3>
+              <p style={styles.panelText}>Enter cultivation details</p>
+            </div>
+          </div>
 
-          <p>
-            <b>District:</b> {cropForm.district}
-          </p>
+          <label style={styles.fieldLabel}>District</label>
+          <input
+            style={styles.input}
+            value={cropForm.district}
+            onChange={(e) =>
+              setCropForm({ ...cropForm, district: e.target.value })
+            }
+            placeholder="Enter district"
+          />
 
-          <p>
-            <b>Crop:</b> {cropForm.crop}
-          </p>
+          <label style={styles.fieldLabel}>Crop</label>
+          <select
+            style={styles.input}
+            value={cropForm.crop}
+            onChange={(e) =>
+              setCropForm({ ...cropForm, crop: e.target.value })
+            }
+          >
+            <option>Paddy</option>
+            <option>Maize</option>
+            <option>Cotton</option>
+            <option>Groundnut</option>
+            <option>Red Gram</option>
+            <option>Green Gram</option>
+            <option>Black Gram</option>
+            <option>Sunflower</option>
+          </select>
 
-          <p>
-            <b>Season:</b> {cropForm.season}
-          </p>
+          <label style={styles.fieldLabel}>Season</label>
+          <select
+            style={styles.input}
+            value={cropForm.season}
+            onChange={(e) =>
+              setCropForm({ ...cropForm, season: e.target.value })
+            }
+          >
+            <option>Kharif</option>
+            <option>Rabi</option>
+            <option>Summer</option>
+          </select>
 
-          <p>
-            <b>Area:</b> {cropForm.area}
-          </p>
-
-          <div style={styles.bigNumber}>
-            {Number(
-              cropData.predicted_production || 0
-            ).toFixed(2)}{" "}
-            tons
+          <div style={styles.twoFieldGrid}>
+            <div>
+              <label style={styles.fieldLabel}>Year</label>
+              <input
+                style={{ ...styles.input, width: "100%", boxSizing: "border-box" }}
+                type="number"
+                value={cropForm.year}
+                onChange={(e) =>
+                  setCropForm({ ...cropForm, year: e.target.value })
+                }
+              />
+            </div>
+            <div>
+              <label style={styles.fieldLabel}>Cultivated Area</label>
+              <input
+                style={{ ...styles.input, width: "100%", boxSizing: "border-box" }}
+                type="number"
+                value={cropForm.area}
+                onChange={(e) =>
+                  setCropForm({ ...cropForm, area: e.target.value })
+                }
+                placeholder="Area"
+              />
+            </div>
           </div>
 
           <button
             style={styles.primaryButton}
-            onClick={() =>
-              setActiveSection("warehouse")
-            }
+            onClick={predictCropProduction}
+            disabled={loadingCrop}
           >
-            Continue to Warehouse Analysis →
+            {loadingCrop ? "Predicting..." : "Predict Crop Production"}
           </button>
         </div>
-      )}
+
+        <div style={styles.resultPanel}>
+          <div style={styles.panelHeading}>
+            <span style={styles.panelIcon}>▥</span>
+            <div>
+              <h3 style={styles.panelTitle}>Prediction Result</h3>
+              <p style={styles.panelText}>Model output appears here</p>
+            </div>
+          </div>
+
+          {!cropData ? (
+            <div style={styles.resultEmpty}>
+              <div style={styles.empty3d}>📊</div>
+              <h3>Ready for prediction</h3>
+              <p>Complete the inputs to generate the expected crop production.</p>
+            </div>
+          ) : (
+            <>
+              <div style={styles.resultSummary}>
+                <span>Predicted Production</span>
+                <strong style={styles.bigNumber}>
+                  {Number(cropData.predicted_production || 0).toFixed(2)}
+                  <small style={styles.tons}> tons</small>
+                </strong>
+              </div>
+              <div style={styles.resultFacts}>
+                <ResultFact label="District" value={cropForm.district} />
+                <ResultFact label="Crop" value={cropForm.crop} />
+                <ResultFact label="Season" value={cropForm.season} />
+                <ResultFact label="Area" value={cropForm.area} />
+              </div>
+              <button
+                style={styles.primaryButton}
+                onClick={() => setActiveSection("warehouse")}
+              >
+                Continue to Warehouse Analysis →
+              </button>
+            </>
+          )}
+        </div>
+      </div>
     </div>
   );
+
 
   const renderWarehouse = () => (
-    <div>
-      <button
-        style={styles.backButton}
-        onClick={() =>
-          setActiveSection("overview")
-        }
-      >
-        ← Back
-      </button>
+    <WarehousePrediction
+      goBack={() => setActiveSection("overview")}
+    />
+  );
 
-      <h2>🏭 Warehouse Capacity Analysis</h2>
+  const renderRequests = () => {
+    const completionRequests =
+      appointments.filter(
+        (item) =>
+          item.status ===
+          "completion_requested"
+      );
 
-      {cropData && (
-        <div style={styles.infoCard}>
-          <b>Predicted Crop Production: </b>
-
-          {Number(
-            cropData.predicted_production || 0
-          ).toFixed(2)}{" "}
-          tons
-        </div>
-      )}
-
-      <div style={styles.formCard}>
-        <label>District</label>
-
-        <input
-          style={styles.input}
-          value={warehouseForm.district}
-          onChange={(e) =>
-            setWarehouseForm({
-              ...warehouseForm,
-              district: e.target.value
-            })
-          }
-        />
-
-        <label>Present Warehouse Capacity</label>
-
-        <input
-          style={styles.input}
-          type="number"
-          value={
-            warehouseForm.presentCapacity
-          }
-          onChange={(e) =>
-            setWarehouseForm({
-              ...warehouseForm,
-              presentCapacity: e.target.value
-            })
-          }
-          placeholder="Capacity in tons"
-        />
-
+    return (
+      <div>
         <button
-          style={styles.primaryButton}
-          onClick={checkWarehouseCapacity}
-          disabled={loadingWarehouse}
+          style={styles.backButton}
+          onClick={() =>
+            setActiveSection("overview")
+          }
         >
-          {loadingWarehouse
-            ? "Checking..."
-            : "Check Warehouse Capacity"}
+          ← Back
         </button>
-      </div>
 
-      {warehouseData && (
-        <div style={styles.resultCard}>
-          <h3>Warehouse Recommendation</h3>
+        <div style={styles.requestHeader}>
+          <div>
+            <h2>
+              📋 Farmer Procurement Requests
+            </h2>
 
-          <div style={styles.capacityRow}>
-            <div style={styles.capacityBox}>
-              <span>Predicted Requirement</span>
-
-              <strong>
-                {warehouseData.predicted_requirement.toFixed(
-                  2
-                )}{" "}
-                tons
-              </strong>
-            </div>
-
-            <div style={styles.capacityBox}>
-              <span>Present Capacity</span>
-
-              <strong>
-                {warehouseData.present_capacity.toFixed(
-                  2
-                )}{" "}
-                tons
-              </strong>
-            </div>
-          </div>
-
-          <div
-            style={{
-              ...styles.recommendation,
-              ...(warehouseData.difference < 0
-                ? styles.warning
-                : styles.success)
-            }}
-          >
-            <b>
-              {warehouseData.recommendation}
-            </b>
+            <p>
+              Approve requests only after checking
+              live capacity. Approval reserves the
+              requested quantity and creates the
+              farmer appointment.
+            </p>
           </div>
 
           <button
-            style={styles.primaryButton}
-            onClick={() =>
-              setActiveSection("requests")
-            }
+            style={styles.secondaryButton}
+            onClick={async () => {
+              await loadRequests();
+              await loadAppointments();
+            }}
           >
-            Continue to Farmer Requests →
+            🔄 Refresh
           </button>
         </div>
-      )}
-    </div>
-  );
 
-  const renderRequests = () => (
-    <div>
-      <button
-        style={styles.backButton}
-        onClick={() =>
-          setActiveSection("overview")
-        }
-      >
-        ← Back
-      </button>
+        {completionRequests.length > 0 && (
+          <div style={styles.completionPanel}>
+            <h2>
+              🔔 Procurement Completion Notifications
+            </h2>
 
-      <div style={styles.requestHeader}>
-        <div>
-          <h2>📋 Farmer Procurement Requests</h2>
+            <p>
+              Farmers below reported that they sold
+              their crop. Verify the actual received
+              quantity before confirming.
+            </p>
 
-          <p>
-            Approve or reject procurement requests and
-            suggest alternative centers when required.
-          </p>
-        </div>
+            {completionRequests.map(
+              (appointment) => (
+                <div
+                  key={appointment.id}
+                  style={styles.completionCard}
+                >
+                  <h3>
+                    🌾 {appointment.crop}
+                  </h3>
 
-        <button
-          style={styles.secondaryButton}
-          onClick={loadRequests}
-        >
-          🔄 Refresh
-        </button>
-      </div>
+                  <p>
+                    <b>Farmer:</b>{" "}
+                    {appointment.farmer_name}
+                  </p>
 
-      {loadingRequests ? (
-        <p>Loading requests...</p>
-      ) : requests.length === 0 ? (
-        <div style={styles.infoCard}>
-          No procurement requests found.
-        </div>
-      ) : (
-        <div>
-          {requests.map((request) => {
-            const centerName =
-              request.center_name ||
-              request.procurement_center_name ||
-              "Not available";
+                  <p>
+                    <b>Center:</b>{" "}
+                    {appointment.center_name}
+                  </p>
 
-            return (
-              <div
-                key={request.id}
-                style={styles.requestCard}
-              >
-                <h3>{request.crop}</h3>
+                  <p>
+                    <b>Reserved Quantity:</b>{" "}
+                    {appointment.reserved_quantity} tons
+                  </p>
 
-                <p>
-                  <b>Farmer:</b>{" "}
-                  {request.farmer_name || "-"}
-                </p>
+                  <p>
+                    <b>Appointment:</b>{" "}
+                    {appointment.appointment_date || "-"}{" "}
+                    {appointment.appointment_time || ""}
+                  </p>
 
-                <p>
-                  <b>Farmer ID:</b>{" "}
-                  {request.farmer_id || "-"}
-                </p>
+                  <label>
+                    Actual Received Quantity (tons)
+                  </label>
 
-                <p>
-                  <b>Mobile:</b>{" "}
-                  {request.mobile_number || "-"}
-                </p>
+                  <input
+                    style={styles.input}
+                    type="number"
+                    min="0.01"
+                    step="0.01"
+                    value={
+                      receivedQuantities[
+                        appointment.id
+                      ] || ""
+                    }
+                    onChange={(event) =>
+                      setReceivedQuantities(
+                        (previous) => ({
+                          ...previous,
+                          [appointment.id]:
+                            event.target.value
+                        })
+                      )
+                    }
+                    placeholder="Example: 95"
+                  />
 
-                <p>
-                  <b>Center:</b> {centerName}
-                </p>
-
-                <p>
-                  <b>District:</b>{" "}
-                  {request.district || "-"}
-                </p>
-
-                <p>
-                  <b>Quantity:</b>{" "}
-                  {request.quantity} tons
-                </p>
-
-                <p>
-                  <b>Distance:</b>{" "}
-                  {request.distance_km || 0} km
-                </p>
-
-                <p>
-                  <b>Status:</b>{" "}
-
-                  <span
-                    style={statusStyle(
-                      request.status
-                    )}
+                  <button
+                    style={styles.approveButton}
+                    onClick={() =>
+                      confirmProcurement(
+                        appointment.id
+                      )
+                    }
                   >
-                    {request.status}
-                  </span>
-                </p>
+                    ✓ Confirm Procurement
+                  </button>
+                </div>
+              )
+            )}
+          </div>
+        )}
 
-                {request.status === "pending" && (
-                  <div style={styles.buttonRow}>
-                    <button
-                      style={styles.approveButton}
-                      onClick={() =>
-                        updateRequestStatus(
-                          request.id,
-                          "accepted"
-                        )
-                      }
-                    >
-                      ✓ Approve
-                    </button>
-
-                    <button
-                      style={styles.rejectButton}
-                      onClick={() =>
-                        updateRequestStatus(
-                          request.id,
-                          "rejected"
-                        )
-                      }
-                    >
-                      ✕ Reject
-                    </button>
-
-                    <button
-                      style={styles.secondaryButton}
-                      onClick={() =>
-                        findAlternativeCenter(
-                          request
-                        )
-                      }
-                    >
-                      Suggest Another Center
-                    </button>
-                  </div>
-                )}
-              </div>
-            );
-          })}
+        <div style={styles.requestSectionTitle}>
+          <div>
+            <span style={styles.heroEyebrow}>ACTION REQUIRED</span>
+            <h2 style={{ margin: "5px 0 0" }}>Current Requests</h2>
+          </div>
+          <span style={styles.countBadge}>{currentRequests.length}</span>
         </div>
-      )}
-    </div>
-  );
+
+        {loadingRequests ? (
+          <p>Loading requests...</p>
+        ) : currentRequests.length === 0 ? (
+          <div style={styles.infoCard}>
+            No pending procurement requests.
+          </div>
+        ) : (
+          <div style={styles.requestGrid}>
+            {currentRequests.map((requestItem) => {
+              const centerName =
+                requestItem.center_name ||
+                requestItem.procurement_center_name ||
+                "Not available";
+
+              const appointment =
+                appointments.find(
+                  (item) =>
+                    Number(
+                      item.procurement_request_id
+                    ) ===
+                    Number(requestItem.id)
+                );
+
+              return (
+                <div
+                  key={requestItem.id}
+                  style={styles.requestCard}
+                >
+                  <h3>{requestItem.crop}</h3>
+
+                  <p>
+                    <b>Farmer:</b>{" "}
+                    {requestItem.farmer_name || "-"}
+                  </p>
+
+                  <p>
+                    <b>Farmer ID:</b>{" "}
+                    {requestItem.farmer_id || "-"}
+                  </p>
+
+                  <p>
+                    <b>Mobile:</b>{" "}
+                    {requestItem.mobile_number || "-"}
+                  </p>
+
+                  <p>
+                    <b>Center:</b>{" "}
+                    {centerName}
+                  </p>
+
+                  <p>
+                    <b>District:</b>{" "}
+                    {requestItem.district || "-"}
+                  </p>
+
+                  <p>
+                    <b>Quantity:</b>{" "}
+                    {requestItem.quantity} tons
+                  </p>
+
+                  <p>
+                    <b>Status:</b>{" "}
+                    <span
+                      style={statusStyle(
+                        requestItem.status
+                      )}
+                    >
+                      {requestItem.status}
+                    </span>
+                  </p>
+
+                  {appointment && (
+                    <div
+                      style={styles.appointmentBox}
+                    >
+                      <b>
+                        📅 Appointment
+                      </b>
+
+                      <p>
+                        Date:{" "}
+                        {appointment.appointment_date}
+                      </p>
+
+                      <p>
+                        Time:{" "}
+                        {appointment.appointment_time}
+                      </p>
+
+                      <p>
+                        Reserved:{" "}
+                        {appointment.reserved_quantity} tons
+                      </p>
+
+                      <p>
+                        Appointment Status:{" "}
+                        {appointment.status}
+                      </p>
+                    </div>
+                  )}
+
+                  {requestItem.status ===
+                    "pending" && (
+                    <>
+                      <div
+                        style={
+                          styles.appointmentInputRow
+                        }
+                      >
+                        <div>
+                          <label>
+                            Appointment Date
+                          </label>
+
+                          <input
+                            style={styles.input}
+                            type="date"
+                            value={
+                              appointmentInputs[
+                                requestItem.id
+                              ]?.date || ""
+                            }
+                            onChange={(event) =>
+                              setAppointmentInputs(
+                                (previous) => ({
+                                  ...previous,
+                                  [requestItem.id]: {
+                                    ...previous[
+                                      requestItem.id
+                                    ],
+                                    date:
+                                      event.target.value
+                                  }
+                                })
+                              )
+                            }
+                          />
+                        </div>
+
+                        <div>
+                          <label>
+                            Appointment Time
+                          </label>
+
+                          <input
+                            style={styles.input}
+                            type="time"
+                            value={
+                              appointmentInputs[
+                                requestItem.id
+                              ]?.time || ""
+                            }
+                            onChange={(event) =>
+                              setAppointmentInputs(
+                                (previous) => ({
+                                  ...previous,
+                                  [requestItem.id]: {
+                                    ...previous[
+                                      requestItem.id
+                                    ],
+                                    time:
+                                      event.target.value
+                                  }
+                                })
+                              )
+                            }
+                          />
+                        </div>
+                      </div>
+
+                      <div style={styles.buttonRow}>
+                        <button
+                          style={
+                            styles.approveButton
+                          }
+                          onClick={() =>
+                            updateRequestStatus(
+                              requestItem.id,
+                              "approved",
+                              appointmentInputs[
+                                requestItem.id
+                              ]?.date || "",
+                              appointmentInputs[
+                                requestItem.id
+                              ]?.time || ""
+                            )
+                          }
+                        >
+                          ✓ Approve & Book
+                        </button>
+
+                        <button
+                          style={
+                            styles.rejectButton
+                          }
+                          onClick={() =>
+                            updateRequestStatus(
+                              requestItem.id,
+                              "rejected"
+                            )
+                          }
+                        >
+                          ✕ Reject
+                        </button>
+
+                        <button
+                          style={
+                            styles.secondaryButton
+                          }
+                          onClick={() =>
+                            findAlternativeCenter(
+                              requestItem
+                            )
+                          }
+                        >
+                          Suggest Another Center
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {loadingAppointments && (
+          <small>
+            Refreshing appointment status...
+          </small>
+        )}
+      </div>
+    );
+  };
 
   const renderReport = () => (
     <div>
@@ -1009,150 +1249,91 @@ function GovernmentDashboard({ user, onLogout }) {
     </div>
   );
 
+  const navigation = [
+    ["overview", "▦", "Overview"],
+    ["crop", "🌾", "Crop Prediction"],
+    ["warehouse", "🏭", "Warehouse"],
+    ["requests", "📋", "Requests"],
+    ["report", "📁", "Final Report"]
+  ];
+
   return (
-    <div style={styles.page}>
-      <header style={styles.header}>
-        <div>
-          <h1>🏛️ Government Control Panel</h1>
-
-          <p>Smart Crop Procurement Planning</p>
+    <div style={styles.appShell}>
+      <aside style={styles.sidebar}>
+        <div style={styles.brandBlock}>
+          <div style={styles.brandIcon}>🏛️</div>
+          <div>
+            <div style={styles.brandName}>AgriGov</div>
+            <div style={styles.brandSub}>PROCUREMENT CONTROL</div>
+          </div>
         </div>
 
-        <button
-          style={styles.logoutButton}
-          onClick={onLogout}
-        >
-          Logout
-        </button>
-      </header>
+        <div style={styles.navLabel}>GOVERNMENT WORKSPACE</div>
+        <nav style={styles.sideNav}>
+          {navigation.map(([key, icon, label]) => (
+            <button
+              key={key}
+              onClick={() => setActiveSection(key)}
+              style={{
+                ...styles.sideNavButton,
+                ...(activeSection === key ? styles.sideNavActive : {})
+              }}
+            >
+              <span style={styles.navIcon}>{icon}</span>
+              <span>{label}</span>
+              {key === "requests" && pending > 0 && (
+                <span style={styles.navCount}>{pending}</span>
+              )}
+            </button>
+          ))}
+        </nav>
 
-      <div style={styles.userCard}>
-        <div style={styles.userCardItem}>
-          <b>Name</b>
-
-          <span>
-            {user?.full_name ||
-              user?.name ||
-              "Government User"}
-          </span>
+        <div style={styles.sidebarBottom}>
+          <div style={styles.govAvatar}>
+            {(user?.full_name || user?.name || "G").charAt(0).toUpperCase()}
+          </div>
+          <div style={{ minWidth: 0 }}>
+            <strong style={styles.govName}>
+              {user?.full_name || user?.name || "Government User"}
+            </strong>
+            <div style={styles.govRole}>
+              {user?.designation || user?.department || "Government Officer"}
+            </div>
+          </div>
+          <button style={styles.sidebarLogout} onClick={onLogout}>↗</button>
         </div>
+      </aside>
 
-        <div style={styles.userCardItem}>
-          <b>Mobile</b>
+      <main style={styles.mainArea}>
+        <header style={styles.topbar}>
+          <div>
+            <span style={styles.topKicker}>SMART PROCUREMENT PLANNING</span>
+            <h1 style={styles.topTitle}>
+              {navigation.find(([key]) => key === activeSection)?.[2] || "Overview"}
+            </h1>
+          </div>
+          <div style={styles.livePill}>● SYSTEM LIVE</div>
+        </header>
 
-          <span>
-            {user?.mobile_number || "-"}
-          </span>
+        <div style={styles.content}>
+          {activeSection === "overview" && renderOverview()}
+          {activeSection === "crop" && renderCropProduction()}
+          {activeSection === "warehouse" && renderWarehouse()}
+          {activeSection === "requests" && renderRequests()}
+          {activeSection === "report" && renderReport()}
         </div>
-
-        <div style={styles.userCardItem}>
-          <b>Department</b>
-
-          <span>
-            {user?.department || "-"}
-          </span>
-        </div>
-
-        <div style={styles.userCardItem}>
-          <b>Designation</b>
-
-          <span>
-            {user?.designation || "-"}
-          </span>
-        </div>
-
-        <div style={styles.userCardItem}>
-          <b>Role</b>
-
-          <span>
-            {user?.role || "government"}
-          </span>
-        </div>
-      </div>
-
-      <nav style={styles.nav}>
-        <button
-          style={
-            activeSection === "overview"
-              ? styles.navActive
-              : styles.navButton
-          }
-          onClick={() =>
-            setActiveSection("overview")
-          }
-        >
-          🏠 Overview
-        </button>
-
-        <button
-          style={
-            activeSection === "crop"
-              ? styles.navActive
-              : styles.navButton
-          }
-          onClick={() =>
-            setActiveSection("crop")
-          }
-        >
-          🌾 Crop Production
-        </button>
-
-        <button
-          style={
-            activeSection === "warehouse"
-              ? styles.navActive
-              : styles.navButton
-          }
-          onClick={() =>
-            setActiveSection("warehouse")
-          }
-        >
-          🏭 Warehouse
-        </button>
-
-        <button
-          style={
-            activeSection === "requests"
-              ? styles.navActive
-              : styles.navButton
-          }
-          onClick={() =>
-            setActiveSection("requests")
-          }
-        >
-          📋 Requests
-        </button>
-
-        <button
-          style={
-            activeSection === "report"
-              ? styles.navActive
-              : styles.navButton
-          }
-          onClick={() =>
-            setActiveSection("report")
-          }
-        >
-          📁 Final Report
-        </button>
-      </nav>
-
-      <main style={styles.content}>
-        {activeSection === "overview" &&
-          renderOverview()}
-
-        {activeSection === "crop" &&
-          renderCropProduction()}
-
-        {activeSection === "warehouse" &&
-          renderWarehouse()}
-
-        {activeSection === "requests" &&
-          renderRequests()}
-
-        {activeSection === "report" &&
-          renderReport()}
       </main>
+    </div>
+  );
+
+}
+
+
+function ResultFact({ label, value }) {
+  return (
+    <div style={styles.resultFact}>
+      <span>{label}</span>
+      <strong>{value || "-"}</strong>
     </div>
   );
 }
@@ -1255,9 +1436,9 @@ const styles = {
   },
 
   content: {
-    margin: "0 40px 40px",
-    padding: "30px",
-    background: "white",
+    margin: "0",
+    padding: "30px 34px 42px",
+    background: "transparent",
     borderRadius: "14px",
     boxShadow:
       "0 2px 10px rgba(0,0,0,0.08)"
@@ -1266,15 +1447,17 @@ const styles = {
   cardGrid: {
     display: "grid",
     gridTemplateColumns:
-      "repeat(auto-fit, minmax(250px, 1fr))",
+      "repeat(2, minmax(0, 1fr))",
     gap: "20px",
     marginTop: "25px"
   },
 
   statCard: {
     padding: "24px",
-    borderRadius: "12px",
-    background: "#f8faf9",
+    minHeight: "190px",
+    boxSizing: "border-box",
+    borderRadius: "18px",
+    background: "linear-gradient(145deg,#ffffff,#f5faf6)",
     border: "1px solid #dce8e4"
   },
 
@@ -1421,6 +1604,41 @@ const styles = {
     marginTop: "15px"
   },
 
+  appointmentInputRow: {
+    display: "grid",
+    gridTemplateColumns:
+      "repeat(auto-fit, minmax(200px, 1fr))",
+    gap: "12px",
+    marginTop: "15px"
+  },
+
+  appointmentBox: {
+    marginTop: "15px",
+    padding: "14px",
+    background: "#eff6ff",
+    borderRadius: "8px",
+    border: "1px solid #bfdbfe"
+  },
+
+  completionPanel: {
+    marginTop: "20px",
+    padding: "20px",
+    background: "#fff7ed",
+    border: "1px solid #fed7aa",
+    borderRadius: "12px"
+  },
+
+  completionCard: {
+    marginTop: "15px",
+    padding: "18px",
+    background: "white",
+    borderRadius: "10px",
+    border: "1px solid #fdba74",
+    display: "flex",
+    flexDirection: "column",
+    gap: "8px"
+  },
+
   reportSection: {
     marginTop: "20px",
     padding: "20px",
@@ -1451,7 +1669,130 @@ const styles = {
     background: "#6b7280",
     color: "white",
     cursor: "pointer"
-  }
+  },
+
+  appShell: {
+    minHeight: "100vh",
+    display: "flex",
+    background: "linear-gradient(135deg, #f4f8f5 0%, #eef5f0 55%, #f8f6ef 100%)",
+    fontFamily: "'Inter', 'Segoe UI', Arial, sans-serif",
+    color: "#18352a"
+  },
+  sidebar: {
+    width: "258px",
+    minWidth: "258px",
+    minHeight: "100vh",
+    position: "sticky",
+    top: 0,
+    alignSelf: "flex-start",
+    boxSizing: "border-box",
+    padding: "28px 18px 20px",
+    background: "linear-gradient(180deg, #123d2d 0%, #0b2f23 100%)",
+    color: "white",
+    display: "flex",
+    flexDirection: "column",
+    boxShadow: "12px 0 35px rgba(11,47,35,.12)"
+  },
+  brandBlock: { display: "flex", alignItems: "center", gap: "12px", padding: "0 8px 28px" },
+  brandIcon: {
+    width: "46px", height: "46px", borderRadius: "15px", display: "grid",
+    placeItems: "center", fontSize: "24px",
+    background: "linear-gradient(145deg, rgba(255,255,255,.2), rgba(255,255,255,.06))",
+    boxShadow: "inset 0 1px 0 rgba(255,255,255,.25), 0 10px 22px rgba(0,0,0,.15)"
+  },
+  brandName: { fontSize: "20px", fontWeight: 800, letterSpacing: ".2px" },
+  brandSub: { fontSize: "9px", opacity: .65, letterSpacing: "1.4px", marginTop: "3px" },
+  navLabel: { fontSize: "10px", letterSpacing: "1.2px", opacity: .5, padding: "8px 12px 10px" },
+  sideNav: { display: "flex", flexDirection: "column", gap: "7px" },
+  sideNavButton: {
+    width: "100%", border: "none", color: "rgba(255,255,255,.76)",
+    background: "transparent", padding: "13px 14px", borderRadius: "12px",
+    display: "flex", alignItems: "center", gap: "12px", cursor: "pointer",
+    fontSize: "14px", textAlign: "left"
+  },
+  sideNavActive: {
+    color: "white", background: "rgba(255,255,255,.13)",
+    boxShadow: "inset 3px 0 0 #8fd19e, 0 8px 18px rgba(0,0,0,.08)"
+  },
+  navIcon: { width: "22px", textAlign: "center", fontSize: "17px" },
+  navCount: {
+    marginLeft: "auto", minWidth: "22px", height: "22px", borderRadius: "11px",
+    display: "grid", placeItems: "center", background: "#d9f3df", color: "#174a34",
+    fontSize: "11px", fontWeight: 800
+  },
+  sidebarBottom: {
+    marginTop: "auto", display: "grid", gridTemplateColumns: "40px minmax(0,1fr) 32px",
+    alignItems: "center", gap: "10px", padding: "16px 8px 0",
+    borderTop: "1px solid rgba(255,255,255,.1)"
+  },
+  govAvatar: {
+    width: "40px", height: "40px", borderRadius: "13px", display: "grid",
+    placeItems: "center", background: "#d9f3df", color: "#164532", fontWeight: 900
+  },
+  govName: { display: "block", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", fontSize: "13px" },
+  govRole: { fontSize: "10px", opacity: .6, marginTop: "3px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" },
+  sidebarLogout: { border: 0, background: "rgba(255,255,255,.1)", color: "white", width: "32px", height: "32px", borderRadius: "9px", cursor: "pointer" },
+  mainArea: { flex: 1, minWidth: 0 },
+  topbar: {
+    minHeight: "92px", padding: "20px 34px", boxSizing: "border-box",
+    display: "flex", alignItems: "center", justifyContent: "space-between",
+    background: "rgba(255,255,255,.82)", borderBottom: "1px solid #e1ebe4"
+  },
+  topKicker: { fontSize: "10px", fontWeight: 800, letterSpacing: "1.5px", color: "#6a8075" },
+  topTitle: { margin: "5px 0 0", fontSize: "25px", color: "#173e2e" },
+  livePill: { padding: "9px 13px", borderRadius: "20px", background: "#e8f6ec", color: "#237447", fontSize: "10px", fontWeight: 900, letterSpacing: ".6px" },
+  sectionPage: { width: "100%" },
+  pageHero: {
+    minHeight: "155px", borderRadius: "22px", padding: "28px 32px", boxSizing: "border-box",
+    display: "flex", justifyContent: "space-between", alignItems: "center",
+    overflow: "hidden", position: "relative", marginBottom: "22px",
+    boxShadow: "0 16px 36px rgba(25,71,51,.10)"
+  },
+  cropHero: {
+    background: "radial-gradient(circle at 78% 20%, rgba(191,230,185,.42), transparent 28%), linear-gradient(120deg, #174b36 0%, #2c7650 55%, #80aa70 100%)",
+    color: "white"
+  },
+  heroEyebrow: { fontSize: "10px", fontWeight: 900, letterSpacing: "1.6px", color: "#6c8578" },
+  heroTitle: { margin: "8px 0", fontSize: "29px", color: "inherit" },
+  heroText: { margin: 0, maxWidth: "600px", opacity: .82, lineHeight: 1.6 },
+  hero3d: {
+    width: "100px", height: "100px", borderRadius: "28px", display: "grid",
+    placeItems: "center", fontSize: "55px", background: "rgba(255,255,255,.14)",
+    boxShadow: "inset 0 1px 0 rgba(255,255,255,.35), 0 18px 30px rgba(0,0,0,.15)",
+    transform: "rotate(-4deg)"
+  },
+  splitWorkspace: { display: "grid", gridTemplateColumns: "minmax(0, .9fr) minmax(0, 1.1fr)", gap: "22px" },
+  formPanel: {
+    background: "white", border: "1px solid #dfe9e2", borderRadius: "20px",
+    padding: "24px", display: "flex", flexDirection: "column", gap: "9px",
+    boxShadow: "0 10px 30px rgba(20,67,46,.06)"
+  },
+  resultPanel: {
+    minHeight: "500px", background: "linear-gradient(145deg,#ffffff,#f4faf5)",
+    border: "1px solid #dfe9e2", borderRadius: "20px", padding: "24px",
+    boxShadow: "0 10px 30px rgba(20,67,46,.06)", boxSizing: "border-box"
+  },
+  panelHeading: { display: "flex", gap: "12px", alignItems: "center", marginBottom: "10px" },
+  panelIcon: { width: "40px", height: "40px", borderRadius: "12px", display: "grid", placeItems: "center", background: "#eaf5ed", color: "#176b4d", fontWeight: 900 },
+  panelTitle: { margin: 0, fontSize: "18px", color: "#193d2f" },
+  panelText: { margin: "3px 0 0", fontSize: "12px", color: "#75877e" },
+  fieldLabel: { fontSize: "12px", fontWeight: 800, color: "#4c6257", marginTop: "4px" },
+  twoFieldGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" },
+  resultEmpty: { minHeight: "390px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", color: "#6f8178" },
+  empty3d: { fontSize: "62px", filter: "drop-shadow(0 12px 12px rgba(30,80,55,.15))" },
+  resultSummary: { padding: "25px", borderRadius: "16px", background: "#eaf6ed", display: "flex", flexDirection: "column", gap: "6px", margin: "18px 0" },
+  tons: { fontSize: "14px", fontWeight: 700, color: "#5c7568" },
+  resultFacts: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "10px" },
+  resultFact: { padding: "13px", borderRadius: "12px", background: "#f6f8f7", display: "flex", flexDirection: "column", gap: "4px", fontSize: "12px", color: "#74847c" },
+  requestGrid: { display: "grid", gridTemplateColumns: "repeat(2,minmax(0,1fr))", gap: "16px" },
+  requestSectionTitle: { display: "flex", justifyContent: "space-between", alignItems: "center", margin: "26px 0 14px" },
+  countBadge: { minWidth: "34px", height: "34px", borderRadius: "17px", display: "grid", placeItems: "center", background: "#174b36", color: "white", fontWeight: 900 },
+  historySection: { marginTop: "34px", paddingTop: "8px", borderTop: "1px solid #e1e9e4" },
+  historyBadge: { padding: "7px 11px", borderRadius: "14px", background: "#edf1ef", color: "#66766e", fontSize: "12px", fontWeight: 800 },
+  historyGrid: { display: "grid", gridTemplateColumns: "repeat(2,minmax(0,1fr))", gap: "10px" },
+  historyCard: { padding: "14px 16px", border: "1px solid #e2e8e4", borderRadius: "12px", background: "#fafcfb", display: "flex", justifyContent: "space-between", gap: "12px", alignItems: "center" },
+  historyMeta: { marginTop: "5px", fontSize: "11px", color: "#75847d" }
+
 };
 
 export default GovernmentDashboard;

@@ -1,8 +1,9 @@
 {
-    "model": "Random Forest",
-    "records_used": 500000,
-    "mean_absolute_error": 91.74941577896146,
-    "r2_score": 0.9840521185617224,
+    "model": "Yield - Hist Gradient Boosting",
+    "records_used": 100000,
+    "mean_absolute_error": 710.9276,
+    "rmse": 946.0672,
+    "r2_score": 0.5515,
     "features": [
         "District",
         "Crop",
@@ -10,8 +11,15 @@
         "Year",
         "Area"
     ],
+    "feature_engineering": [
+        "year_index",
+        "log_area",
+        "sqrt_area",
+        "area_squared_scaled",
+        "year_area",
+        "direct_yield_blend_comparison"
+    ],
     "districts": [
-        "Anantapur",
         "Ananthapuramu",
         "Chittoor",
         "East Godavari",
@@ -20,7 +28,6 @@
         "Kakinada",
         "Krishna",
         "Kurnool",
-        "NTR",
         "Nandyal",
         "Nellore",
         "Palnadu",
@@ -46,5 +53,63 @@
         "Kharif",
         "Rabi",
         "Summer"
-    ]
+    ],
+    "model_comparison": {
+        "Direct - Hist Gradient Boosting": {
+            "mean_absolute_error": 711.8969,
+            "rmse": 947.5587,
+            "r2_score": 0.5501
+        },
+        "Direct HGB - Conservative": {
+            "mean_absolute_error": 711.4598,
+            "rmse": 946.6903,
+            "r2_score": 0.5509
+        },
+        "Direct HGB - Balanced": {
+            "mean_absolute_error": 711.5496,
+            "rmse": 947.0772,
+            "r2_score": 0.5506
+        },
+        "Direct HGB - Flexible": {
+            "mean_absolute_error": 711.5825,
+            "rmse": 947.8615,
+            "r2_score": 0.5498
+        },
+        "Yield - Hist Gradient Boosting": {
+            "mean_absolute_error": 710.9276,
+            "rmse": 946.0672,
+            "r2_score": 0.5515
+        },
+        "Yield HGB - Balanced": {
+            "mean_absolute_error": 710.9429,
+            "rmse": 946.1045,
+            "r2_score": 0.5515
+        },
+        "Engineered - Hist Gradient Boosting": {
+            "mean_absolute_error": 711.9436,
+            "rmse": 947.1127,
+            "r2_score": 0.5505
+        },
+        "Engineered HGB - Flexible": {
+            "mean_absolute_error": 711.9308,
+            "rmse": 948.1504,
+            "r2_score": 0.5496
+        },
+        "Engineered - Extra Trees": {
+            "mean_absolute_error": 719.8209,
+            "rmse": 966.4518,
+            "r2_score": 0.532
+        },
+        "Engineered - Random Forest": {
+            "mean_absolute_error": 720.1478,
+            "rmse": 966.1957,
+            "r2_score": 0.5323
+        },
+        "Blend - Direct + Yield HGB": {
+            "mean_absolute_error": 710.9306,
+            "rmse": 946.0647,
+            "r2_score": 0.5515
+        }
+    },
+    "trained_at": "2026-09-20T10:09:30.493745+00:00"
 }

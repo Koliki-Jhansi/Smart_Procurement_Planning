@@ -1,24 +1,91 @@
+# ============================================
+# ENVIRONMENT VARIABLES / SECRET KEYS
+# ============================================
+
 .env
 backend/.env
+frontend/.env
+.env.local
+.env.*.local
+
+
+# ============================================
+# PYTHON
+# ============================================
 
 __pycache__/
 *.pyc
 *.pyo
+*.pyd
 *.pkl
+
+venv/
+.venv/
+
+
+# ============================================
+# DATABASE
+# ============================================
 
 backend/instance/
 *.db
+*.sqlite
+*.sqlite3
+
+backend/instance/smart_procurement.db
+
+
+# ============================================
+# PROJECT DATASETS
+# ============================================
 
 *.csv
 *.tsv
 *.xlsx
+*.xls
+
+backend/datasets/
+
+
+# ============================================
+# FRONTEND / NODE
+# ============================================
 
 frontend/node_modules/
 frontend/dist/
 
-# Local project data and generated build output
-backend/instance/smart_procurement.db
-backend/datasets/
+node_modules/
+dist/
+
+
+# ============================================
+# IDE FILES
+# ============================================
 
 .vscode/
+.idea/
+
+
+# ============================================
+# LOG FILES
+# ============================================
+
 *.log
+
+
+# ============================================
+# OPERATING SYSTEM FILES
+# ============================================
+
+.DS_Store
+Thumbs.db
+
+
+# ============================================
+# BUILD / CACHE
+# ============================================
+
+.cache/
+.pytest_cache/
+coverage/
+htmlcov/

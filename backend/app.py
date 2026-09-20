@@ -13,6 +13,11 @@ from routes.prediction import prediction_bp
 from routes.transport import transport_bp
 from routes.notifications import notifications_bp
 
+# NEW
+from routes.warehouse import warehouse_bp
+from routes.appointment import appointment_bp
+
+
 from models.user import User
 from models.training_data import TrainingData
 from models.procurement_center import ProcurementCenter
@@ -23,12 +28,20 @@ from models.procurement_history import ProcurementHistory
 from models.procurement_request import ProcurementRequest
 from models.notification import Notification
 
+# NEW
+from models.appointment import Appointment
+
 
 app = Flask(__name__)
 
 
-app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///smart_procurement.db"
-app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+app.config[
+    "SQLALCHEMY_DATABASE_URI"
+] = "sqlite:///smart_procurement.db"
+
+app.config[
+    "SQLALCHEMY_TRACK_MODIFICATIONS"
+] = False
 
 
 db.init_app(app)
@@ -56,21 +69,48 @@ CORS(
 )
 
 
-app.register_blueprint(auth_bp)
+app.register_blueprint(
+    auth_bp
+)
 
-app.register_blueprint(procurement_bp)
+app.register_blueprint(
+    procurement_bp
+)
 
-app.register_blueprint(procurement_request_bp)
+app.register_blueprint(
+    procurement_request_bp
+)
 
-app.register_blueprint(admin_bp)
+app.register_blueprint(
+    admin_bp
+)
 
-app.register_blueprint(otp_bp)
+app.register_blueprint(
+    otp_bp
+)
 
-app.register_blueprint(government_bp)
+app.register_blueprint(
+    government_bp
+)
 
-app.register_blueprint(prediction_bp)
+app.register_blueprint(
+    prediction_bp
+)
 
-app.register_blueprint(notifications_bp)
+app.register_blueprint(
+    notifications_bp
+)
+
+# NEW
+app.register_blueprint(
+    warehouse_bp
+)
+
+# NEW
+app.register_blueprint(
+    appointment_bp
+)
+
 
 app.register_blueprint(
     transport_bp,
@@ -83,7 +123,8 @@ def home():
 
     return jsonify({
         "success": True,
-        "message": "Smart Crop Procurement Planning API is running."
+        "message":
+            "Smart Crop Procurement Planning API is running."
     })
 
 
@@ -92,7 +133,8 @@ def health():
 
     return jsonify({
         "success": True,
-        "message": "Backend is running."
+        "message":
+            "Backend is running."
     })
 
 
@@ -100,21 +142,70 @@ def health():
 def api_info():
 
     return jsonify({
+
         "success": True,
-        "message": "Smart Crop Procurement Planning API",
+
+        "message":
+            "Smart Crop Procurement Planning API",
+
         "endpoints": {
-            "health": "/api/health",
-            "register": "/api/auth/register",
-            "login": "/api/auth/login",
-            "crop_prediction": "/api/predict",
-            "procurement_centers": "/api/procurement/centers",
-            "create_procurement_request": "/api/procurement-requests",
-            "get_all_procurement_requests": "/api/procurement-requests",
-            "farmer_requests": "/api/procurement-requests/farmer/<farmer_id>",
-            "single_procurement_request": "/api/procurement-requests/<request_id>",
-            "update_request_status": "/api/procurement-requests/<request_id>/status",
-            "farmer_notifications": "/api/notifications/farmer/<farmer_id>",
-            "transport_calculation": "/api/transport/calculate"
+
+            "health":
+                "/api/health",
+
+            "register":
+                "/api/auth/register",
+
+            "login":
+                "/api/auth/login",
+
+            "crop_prediction":
+                "/api/predict",
+
+            "procurement_centers":
+                "/api/procurement/centers",
+
+            "create_procurement_request":
+                "/api/procurement-requests",
+
+            "get_all_procurement_requests":
+                "/api/procurement-requests",
+
+            "farmer_requests":
+                "/api/procurement-requests/farmer/<farmer_id>",
+
+            "single_procurement_request":
+                "/api/procurement-requests/<request_id>",
+
+            "update_request_status":
+                "/api/procurement-requests/<request_id>/status",
+
+            "farmer_notifications":
+                "/api/notifications/farmer/<farmer_id>",
+
+            "transport_calculation":
+                "/api/transport/calculate",
+
+            "warehouse_centers":
+                "/api/warehouse/centers?district=<district>",
+
+            "warehouse_center":
+                "/api/warehouse/center/<center_id>",
+
+            "book_appointment":
+                "/api/appointments/book",
+
+            "farmer_appointments":
+                "/api/appointments/farmer/<farmer_id>",
+
+            "center_appointments":
+                "/api/appointments/center/<center_id>",
+
+            "complete_appointment":
+                "/api/appointments/<appointment_id>/complete",
+
+            "cancel_appointment":
+                "/api/appointments/<appointment_id>/cancel"
         }
     })
 
@@ -125,22 +216,67 @@ def create_database_tables():
 
         db.create_all()
 
-        print("Database tables checked and created successfully.")
+        print(
+            "Database tables checked and created successfully."
+        )
 
 
 if __name__ == "__main__":
 
     create_database_tables()
 
-    print("Smart Crop Procurement Backend Started")
+    print(
+        "Smart Crop Procurement Backend Started"
+    )
 
-    print("Backend URL: http://127.0.0.1:5000")
-    print("Health URL: http://127.0.0.1:5000/api/health")
-    print("Prediction URL: http://127.0.0.1:5000/api/predict")
-    print("Centers URL: http://127.0.0.1:5000/api/procurement/centers")
-    print("Procurement Request URL: http://127.0.0.1:5000/api/procurement-requests")
-    print("Farmer Requests URL: http://127.0.0.1:5000/api/procurement-requests/farmer/<farmer_id>")
-    print("Transport URL: http://127.0.0.1:5000/api/transport/calculate")
+    print(
+        "Backend URL: "
+        "http://127.0.0.1:5000"
+    )
+
+    print(
+        "Health URL: "
+        "http://127.0.0.1:5000/api/health"
+    )
+
+    print(
+        "Prediction URL: "
+        "http://127.0.0.1:5000/api/predict"
+    )
+
+    print(
+        "Centers URL: "
+        "http://127.0.0.1:5000/api/procurement/centers"
+    )
+
+    print(
+        "Procurement Request URL: "
+        "http://127.0.0.1:5000/api/procurement-requests"
+    )
+
+    print(
+        "Farmer Requests URL: "
+        "http://127.0.0.1:5000/"
+        "api/procurement-requests/farmer/<farmer_id>"
+    )
+
+    print(
+        "Transport URL: "
+        "http://127.0.0.1:5000/"
+        "api/transport/calculate"
+    )
+
+    print(
+        "Warehouse URL: "
+        "http://127.0.0.1:5000/"
+        "api/warehouse/centers?district=Palnadu"
+    )
+
+    print(
+        "Appointment Booking URL: "
+        "http://127.0.0.1:5000/"
+        "api/appointments/book"
+    )
 
     app.run(
         host="127.0.0.1",

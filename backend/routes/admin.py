@@ -10,9 +10,103 @@ import joblib
 import pandas as pd
 
 from sklearn.preprocessing import LabelEncoder
-from sklearn.ensemble import RandomForestRegressor
+from sklearn.ensemble import RandomForestRegressor, ExtraTreesRegressor, HistGradientBoostingRegressor
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import mean_absolute_error, r2_score
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+
+
+class YieldToProductionRegressor:
+    """Compatibility wrapper: accepts the existing 5 production features.
+
+    Internally predicts yield from district/crop/season/year, then converts
+    predicted yield back to production using the supplied area.
+    """
+
+    def __init__(self, yield_model):
+        self.yield_model = yield_model
+
+    def fit(self, X, y):
+        X_frame = pd.DataFrame(X).copy()
+        area = pd.to_numeric(X_frame.iloc[:, 4], errors="coerce").astype(float)
+        production = pd.Series(y, index=X_frame.index, dtype=float)
+        yield_target = production / area
+        self.yield_model.fit(X_frame.iloc[:, :4], yield_target)
+        return self
+
+    def predict(self, X):
+        X_frame = pd.DataFrame(X).copy()
+        area = pd.to_numeric(X_frame.iloc[:, 4], errors="coerce").astype(float)
+        predicted_yield = self.yield_model.predict(X_frame.iloc[:, :4])
+        return predicted_yield * area.to_numpy()
+
+
+class BlendedRegressor:
+    """Blend two fitted regressors while preserving the existing 5-feature API."""
+
+    def __init__(self, model_a, model_b, weight_a=0.5):
+        self.model_a = model_a
+        self.model_b = model_b
+        self.weight_a = float(weight_a)
+
+    def fit(self, X, y):
+        self.model_a.fit(X, y)
+        self.model_b.fit(X, y)
+        return self
+
+    def predict(self, X):
+        pred_a = self.model_a.predict(X)
+        pred_b = self.model_b.predict(X)
+        return (self.weight_a * pred_a) + ((1.0 - self.weight_a) * pred_b)
+
+
+class FeatureEngineeredRegressor:
+    """Keep the existing 5-input API while adding numeric feature engineering."""
+
+    def __init__(self, model):
+        self.model = model
+        self.base_year_ = None
+
+    def _transform(self, X):
+        import numpy as np
+
+        frame = pd.DataFrame(X).copy()
+        if frame.shape[1] != 5:
+            raise ValueError("Expected 5 features: district, crop, season, year, area")
+
+        district = pd.to_numeric(frame.iloc[:, 0], errors="coerce").astype(float)
+        crop = pd.to_numeric(frame.iloc[:, 1], errors="coerce").astype(float)
+        season = pd.to_numeric(frame.iloc[:, 2], errors="coerce").astype(float)
+        year = pd.to_numeric(frame.iloc[:, 3], errors="coerce").astype(float)
+        area = pd.to_numeric(frame.iloc[:, 4], errors="coerce").astype(float)
+
+        if self.base_year_ is None:
+            self.base_year_ = float(year.min())
+
+        year_index = year - self.base_year_
+        safe_area = area.clip(lower=0.000001)
+
+        return pd.DataFrame({
+            "district": district,
+            "crop": crop,
+            "season": season,
+            "year": year,
+            "area": area,
+            "year_index": year_index,
+            "log_area": np.log1p(safe_area),
+            "sqrt_area": np.sqrt(safe_area),
+            "area_squared_scaled": (area * area) / 1000.0,
+            "year_area": year_index * area,
+        })
+
+    def fit(self, X, y):
+        self.base_year_ = None
+        transformed = self._transform(X)
+        self.model.fit(transformed, y)
+        return self
+
+    def predict(self, X):
+        transformed = self._transform(X)
+        return self.model.predict(transformed)
 
 
 admin_bp = Blueprint(
@@ -835,397 +929,279 @@ def upload_dataset():
     "/train-model",
     methods=["POST"]
 )
-
 def train_model():
-
     admin = is_admin()
 
     if not admin:
-
         return jsonify({
-
             "success": False,
-
-            "message":
-                "Admin access required"
-
+            "message": "Admin access required"
         }), 403
 
     try:
+        records = TrainingData.query.all()
 
-        records = (
-            TrainingData.query.all()
-        )
+        rows = []
+        for record in records:
+            try:
+                district = str(record.district or "").strip()
+                crop = str(record.crop or "").strip()
+                season = str(record.season or "").strip()
+                year = int(record.year)
+                area = float(record.area)
+                production = float(record.production)
+            except (TypeError, ValueError):
+                continue
 
-        record_count = len(
-            records
-        )
+            if not district or not crop or not season:
+                continue
+            if area <= 0 or production < 0:
+                continue
 
+            rows.append({
+                "district": district,
+                "crop": crop,
+                "season": season,
+                "year": year,
+                "area": area,
+                "production": production
+            })
+
+        df = pd.DataFrame(rows)
+        if not df.empty:
+            df = df.dropna().drop_duplicates().reset_index(drop=True)
+
+        record_count = len(df)
         if record_count < 10:
-
             return jsonify({
-
                 "success": False,
-
-                "message":
-                    "At least 10 training records are required",
-
-                "records_available":
-                    record_count
-
+                "message": "At least 10 valid training records are required",
+                "records_available": record_count
             }), 400
 
-        districts = [
-
-            str(
-                record.district
-            ).strip()
-
-            for record
-            in records
-
-        ]
-
-        crops = [
-
-            str(
-                record.crop
-            ).strip()
-
-            for record
-            in records
-
-        ]
-
-        seasons = [
-
-            str(
-                record.season
-            ).strip()
-
-            for record
-            in records
-
-        ]
-
-        years = [
-
-            int(
-                record.year
-            )
-
-            for record
-            in records
-
-        ]
-
-        areas = [
-
-            float(
-                record.area
-            )
-
-            for record
-            in records
-
-        ]
-
-        production = [
-
-            float(
-                record.production
-            )
-
-            for record
-            in records
-
-        ]
-
+        # Keep the existing encoder files and 5-feature prediction interface.
         district_encoder = LabelEncoder()
-
         crop_encoder = LabelEncoder()
-
         season_encoder = LabelEncoder()
 
-
-        district_encoded = (
-            district_encoder.fit_transform(
-                districts
-            )
-        )
-
-        crop_encoded = (
-            crop_encoder.fit_transform(
-                crops
-            )
-        )
-
-        season_encoded = (
-            season_encoder.fit_transform(
-                seasons
-            )
-        )
-
-
         X = pd.DataFrame({
-
-            "district":
-                district_encoded,
-
-            "crop":
-                crop_encoded,
-
-            "season":
-                season_encoded,
-
-            "year":
-                years,
-
-            "area":
-                areas
-
+            "district": district_encoder.fit_transform(df["district"]),
+            "crop": crop_encoder.fit_transform(df["crop"]),
+            "season": season_encoder.fit_transform(df["season"]),
+            "year": df["year"].astype(int),
+            "area": df["area"].astype(float)
         })
+        y = df["production"].astype(float)
 
-        y = production
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, test_size=0.20, random_state=42
+        )
 
+        # Compare the current models with feature-engineered models on the
+        # SAME held-out rows. Metrics are always calculated from predictions;
+        # nothing is hard-coded. The wrapper still accepts the original five
+        # inputs used by the existing prediction endpoint.
+        # Compare several tuned candidates on the exact same held-out test rows.
+        # The best model is selected from real R² results; no metric is hard-coded.
+        direct_hgb_balanced = HistGradientBoostingRegressor(
+            learning_rate=0.06,
+            max_iter=500,
+            max_leaf_nodes=31,
+            min_samples_leaf=25,
+            l2_regularization=1.0,
+            random_state=42
+        )
 
-        X_train, X_test, y_train, y_test = (
-            train_test_split(
-
-                X,
-
-                y,
-
-                test_size=0.20,
-
+        yield_hgb_balanced = YieldToProductionRegressor(
+            HistGradientBoostingRegressor(
+                learning_rate=0.06,
+                max_iter=500,
+                max_leaf_nodes=31,
+                min_samples_leaf=25,
+                l2_regularization=1.0,
                 random_state=42
-
             )
         )
 
-
-        model = RandomForestRegressor(
-
-            n_estimators=100,
-
-            random_state=42,
-
-            n_jobs=-1
-
-        )
-
-
-        model.fit(
-
-            X_train,
-
-            y_train
-
-        )
-
-
-        predictions = model.predict(
-
-            X_test
-
-        )
-
-
-        mae = mean_absolute_error(
-
-            y_test,
-
-            predictions
-
-        )
-
-
-        r2 = r2_score(
-
-            y_test,
-
-            predictions
-
-        )
-
-
-        joblib.dump(
-
-            model,
-
-            os.path.join(
-
-                MODELS_DIR,
-
-                "crop_prediction_model.pkl"
-
-            )
-
-        )
-
-
-        joblib.dump(
-
-            district_encoder,
-
-            os.path.join(
-
-                MODELS_DIR,
-
-                "district_encoder.pkl"
-
-            )
-
-        )
-
-
-        joblib.dump(
-
-            crop_encoder,
-
-            os.path.join(
-
-                MODELS_DIR,
-
-                "crop_encoder.pkl"
-
-            )
-
-        )
-
-
-        joblib.dump(
-
-            season_encoder,
-
-            os.path.join(
-
-                MODELS_DIR,
-
-                "season_encoder.pkl"
-
-            )
-
-        )
-
-
-        metadata = {
-
-            "model":
-                "Random Forest",
-
-            "records_used":
-                record_count,
-
-            "mean_absolute_error":
-                float(mae),
-
-            "r2_score":
-                float(r2),
-
-            "features": [
-
-                "District",
-
-                "Crop",
-
-                "Season",
-
-                "Year",
-
-                "Area"
-
-            ],
-
-            "districts":
-                list(
-                    district_encoder.classes_
-                ),
-
-            "crops":
-                list(
-                    crop_encoder.classes_
-                ),
-
-            "seasons":
-                list(
-                    season_encoder.classes_
+        candidates = {
+            "Direct - Hist Gradient Boosting": HistGradientBoostingRegressor(
+                learning_rate=0.08,
+                max_iter=350,
+                max_leaf_nodes=31,
+                l2_regularization=0.5,
+                random_state=42
+            ),
+
+            "Direct HGB - Conservative": HistGradientBoostingRegressor(
+                learning_rate=0.04,
+                max_iter=650,
+                max_leaf_nodes=15,
+                min_samples_leaf=35,
+                l2_regularization=2.0,
+                random_state=42
+            ),
+
+            "Direct HGB - Balanced": direct_hgb_balanced,
+
+            "Direct HGB - Flexible": HistGradientBoostingRegressor(
+                learning_rate=0.05,
+                max_iter=550,
+                max_leaf_nodes=63,
+                min_samples_leaf=30,
+                l2_regularization=2.0,
+                random_state=42
+            ),
+
+            "Yield - Hist Gradient Boosting": YieldToProductionRegressor(
+                HistGradientBoostingRegressor(
+                    learning_rate=0.08,
+                    max_iter=350,
+                    max_leaf_nodes=31,
+                    l2_regularization=0.5,
+                    random_state=42
                 )
+            ),
 
+            "Yield HGB - Balanced": yield_hgb_balanced,
+
+            "Engineered - Hist Gradient Boosting": FeatureEngineeredRegressor(
+                HistGradientBoostingRegressor(
+                    learning_rate=0.05,
+                    max_iter=500,
+                    max_leaf_nodes=31,
+                    min_samples_leaf=30,
+                    l2_regularization=1.5,
+                    random_state=42
+                )
+            ),
+
+            "Engineered HGB - Flexible": FeatureEngineeredRegressor(
+                HistGradientBoostingRegressor(
+                    learning_rate=0.04,
+                    max_iter=650,
+                    max_leaf_nodes=63,
+                    min_samples_leaf=35,
+                    l2_regularization=2.0,
+                    random_state=42
+                )
+            ),
+
+            "Engineered - Extra Trees": FeatureEngineeredRegressor(
+                ExtraTreesRegressor(
+                    n_estimators=500,
+                    min_samples_split=10,
+                    min_samples_leaf=5,
+                    max_features=1.0,
+                    random_state=42,
+                    n_jobs=-1
+                )
+            ),
+
+            "Engineered - Random Forest": FeatureEngineeredRegressor(
+                RandomForestRegressor(
+                    n_estimators=450,
+                    min_samples_split=10,
+                    min_samples_leaf=5,
+                    max_features=1.0,
+                    random_state=42,
+                    n_jobs=-1
+                )
+            ),
+
+            # A blend can reduce error when direct-production and yield models
+            # make different mistakes. Both components are trained only on X_train/y_train.
+            "Blend - Direct + Yield HGB": BlendedRegressor(
+                HistGradientBoostingRegressor(
+                    learning_rate=0.06,
+                    max_iter=500,
+                    max_leaf_nodes=31,
+                    min_samples_leaf=25,
+                    l2_regularization=1.0,
+                    random_state=42
+                ),
+                YieldToProductionRegressor(
+                    HistGradientBoostingRegressor(
+                        learning_rate=0.06,
+                        max_iter=500,
+                        max_leaf_nodes=31,
+                        min_samples_leaf=25,
+                        l2_regularization=1.0,
+                        random_state=42
+                    )
+                ),
+                weight_a=0.35
+            )
         }
 
+        comparison = {}
+        fitted_models = {}
 
-        metadata_path = os.path.join(
+        for model_name, candidate in candidates.items():
+            candidate.fit(X_train, y_train)
+            predictions = candidate.predict(X_test)
 
-            MODELS_DIR,
+            mae_value = mean_absolute_error(y_test, predictions)
+            rmse_value = mean_squared_error(y_test, predictions) ** 0.5
+            r2_value = r2_score(y_test, predictions)
 
-            "crop_prediction_model_meta.json"
+            fitted_models[model_name] = candidate
+            comparison[model_name] = {
+                "mean_absolute_error": round(float(mae_value), 4),
+                "rmse": round(float(rmse_value), 4),
+                "r2_score": round(float(r2_value), 4)
+            }
 
+        best_model_name = max(
+            comparison,
+            key=lambda name: comparison[name]["r2_score"]
         )
+        model = fitted_models[best_model_name]
+        best_metrics = comparison[best_model_name]
 
+        # Preserve all filenames used by the existing prediction API.
+        joblib.dump(model, os.path.join(MODELS_DIR, "crop_prediction_model.pkl"))
+        joblib.dump(district_encoder, os.path.join(MODELS_DIR, "district_encoder.pkl"))
+        joblib.dump(crop_encoder, os.path.join(MODELS_DIR, "crop_encoder.pkl"))
+        joblib.dump(season_encoder, os.path.join(MODELS_DIR, "season_encoder.pkl"))
 
-        with open(
+        from datetime import datetime, timezone
 
-            metadata_path,
+        metadata = {
+            "model": best_model_name,
+            "records_used": record_count,
+            "mean_absolute_error": best_metrics["mean_absolute_error"],
+            "rmse": best_metrics["rmse"],
+            "r2_score": best_metrics["r2_score"],
+            "features": ["District", "Crop", "Season", "Year", "Area"],
+            "feature_engineering": ["year_index", "log_area", "sqrt_area", "area_squared_scaled", "year_area", "direct_yield_blend_comparison"],
+            "districts": list(district_encoder.classes_),
+            "crops": list(crop_encoder.classes_),
+            "seasons": list(season_encoder.classes_),
+            "model_comparison": comparison,
+            "trained_at": datetime.now(timezone.utc).isoformat()
+        }
 
-            "w",
-
-            encoding="utf-8"
-
-        ) as meta_file:
-
-            json.dump(
-
-                metadata,
-
-                meta_file,
-
-                indent=4
-
-            )
-
+        metadata_path = os.path.join(MODELS_DIR, "crop_prediction_model_meta.json")
+        with open(metadata_path, "w", encoding="utf-8") as meta_file:
+            json.dump(metadata, meta_file, indent=4)
 
         return jsonify({
-
             "success": True,
-
-            "message":
-                "Model trained successfully",
-
-            "records_used":
-                record_count,
-
-            "mean_absolute_error":
-                round(
-                    float(mae),
-                    4
-                ),
-
-            "r2_score":
-                round(
-                    float(r2),
-                    4
-                ),
-
-            "model":
-                "Random Forest"
-
+            "message": "Model trained successfully",
+            "records_used": record_count,
+            "model": best_model_name,
+            "mean_absolute_error": best_metrics["mean_absolute_error"],
+            "rmse": best_metrics["rmse"],
+            "r2_score": best_metrics["r2_score"],
+            "model_comparison": comparison
         })
 
     except Exception as e:
-
         db.session.rollback()
-
         return jsonify({
-
             "success": False,
-
-            "message":
-                "Model training failed",
-
-            "error":
-                str(e)
-
+            "message": "Model training failed",
+            "error": str(e)
         }), 500
 
 

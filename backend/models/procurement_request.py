@@ -4,6 +4,7 @@ from extensions import db
 
 
 class ProcurementRequest(db.Model):
+
     __tablename__ = "procurement_requests"
 
     id = db.Column(
@@ -107,42 +108,96 @@ class ProcurementRequest(db.Model):
     )
 
     def to_dict(self):
+
         return {
-            "id": self.id,
-            "request_id": self.id,
-            "farmer_id": self.farmer_id,
-            "farmer_name": self.farmer_name,
-            "mobile_number": self.mobile_number,
-            "mobile": self.mobile_number,
-            "phone": self.mobile_number,
-            "district": self.district,
-            "center_id": self.center_id,
-            "procurement_center_id": self.center_id,
-            "center_name": self.center_name,
-            "procurement_center_name": self.center_name,
-            "center": self.center_name,
-            "center_district": self.center_district,
-            "center_location": self.center_location,
-            "location": self.center_location,
-            "crop": self.crop,
-            "crop_name": self.crop,
-            "quantity": self.quantity,
-            "distance_km": self.distance_km,
-            "distance": self.distance_km,
-            "vehicle": self.vehicle,
-            "transport_cost": self.transport_cost,
-            "total_cost": self.total_cost,
-            "status": self.status,
+
+            "id":
+                self.id,
+
+            "request_id":
+                self.id,
+
+            "farmer_id":
+                self.farmer_id,
+
+            "farmer_name":
+                self.farmer_name,
+
+            "mobile_number":
+                self.mobile_number,
+
+            "mobile":
+                self.mobile_number,
+
+            "phone":
+                self.mobile_number,
+
+            "district":
+                self.district,
+
+            "center_id":
+                self.center_id,
+
+            "procurement_center_id":
+                self.center_id,
+
+            "center_name":
+                self.center_name,
+
+            "procurement_center_name":
+                self.center_name,
+
+            "center":
+                self.center_name,
+
+            "center_district":
+                self.center_district,
+
+            "center_location":
+                self.center_location,
+
+            "location":
+                self.center_location,
+
+            "crop":
+                self.crop,
+
+            "crop_name":
+                self.crop,
+
+            "quantity":
+                self.quantity,
+
+            "distance_km":
+                self.distance_km,
+
+            "distance":
+                self.distance_km,
+
+            "vehicle":
+                self.vehicle,
+
+            "transport_cost":
+                self.transport_cost,
+
+            "total_cost":
+                self.total_cost,
+
+            "status":
+                self.status,
+
             "created_at": (
                 self.created_at.isoformat()
                 if self.created_at
                 else None
             ),
+
             "updated_at": (
                 self.updated_at.isoformat()
                 if self.updated_at
                 else None
             ),
+
             "created_at_display": (
                 self.created_at.strftime(
                     "%d-%m-%Y %I:%M:%S %p"
@@ -150,6 +205,7 @@ class ProcurementRequest(db.Model):
                 if self.created_at
                 else None
             ),
+
             "updated_at_display": (
                 self.updated_at.strftime(
                     "%d-%m-%Y %I:%M:%S %p"

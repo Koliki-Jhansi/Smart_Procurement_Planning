@@ -16,6 +16,13 @@ class Warehouse(db.Model):
         nullable=False
     )
 
+    center_id = db.Column(
+        db.String(100),
+        unique=True,
+        nullable=True,
+        index=True
+    )
+
     warehouse_name = db.Column(
         db.String(200),
         nullable=False
@@ -23,7 +30,8 @@ class Warehouse(db.Model):
 
     district = db.Column(
         db.String(100),
-        nullable=False
+        nullable=False,
+        index=True
     )
 
     total_capacity = db.Column(
@@ -39,20 +47,37 @@ class Warehouse(db.Model):
 
     def to_dict(self):
 
-        available_capacity = (
-            self.total_capacity -
-            self.current_stock
+        physical_available = (
+            float(self.total_capacity or 0)
+            -
+            float(self.current_stock or 0)
         )
 
         return {
-            "id": self.id,
-            "warehouse_id": self.warehouse_id,
-            "warehouse_name": self.warehouse_name,
-            "district": self.district,
-            "total_capacity": self.total_capacity,
-            "current_stock": self.current_stock,
-            "available_capacity": max(
-                available_capacity,
-                0
-            )
+            "id":
+                self.id,
+
+            "warehouse_id":
+                self.warehouse_id,
+
+            "center_id":
+                self.center_id,
+
+            "warehouse_name":
+                self.warehouse_name,
+
+            "district":
+                self.district,
+
+            "total_capacity":
+                float(self.total_capacity or 0),
+
+            "current_stock":
+                float(self.current_stock or 0),
+
+            "available_capacity":
+                max(
+                    physical_available,
+                    0
+                )
         }

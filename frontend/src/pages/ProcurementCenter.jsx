@@ -8,6 +8,8 @@ user,
 selectedCrop,
 goBack,
 onSelectCenter,
+villageLatitude,
+villageLongitude,
 }) {
 
 // =====================================================
@@ -53,6 +55,21 @@ user?.mandal ||
 user?.Mandal ||
 "";
 
+const farmerLatitude =
+villageLatitude ??
+user?.latitude ??
+user?.village_latitude ??
+user?.lat ??
+null;
+
+const farmerLongitude =
+villageLongitude ??
+user?.longitude ??
+user?.village_longitude ??
+user?.lon ??
+user?.lng ??
+null;
+
 const rawDistrict =
 user?.district ||
 user?.District ||
@@ -72,12 +89,23 @@ rawDistrict
 // SELECTED CROP
 // =====================================================
 
+// Keep the complete prediction object for the next page.
+// farmerCropName is used only where a crop name string is required.
 const farmerCrop =
 selectedCrop ||
 user?.crop ||
 user?.primary_crop ||
 user?.Crop ||
 "";
+
+const farmerCropName =
+typeof farmerCrop === "string"
+? farmerCrop
+: farmerCrop?.crop ||
+  farmerCrop?.name ||
+  farmerCrop?.crop_name ||
+  farmerCrop?.Crop ||
+  "";
 
 // =====================================================
 // ACTIVE DISTRICT
@@ -176,6 +204,39 @@ const supportedCrops =
   [];
 
 
+const centerLatitude =
+
+  center.latitude ??
+
+  center.Latitude ??
+
+  center.lat ??
+
+  null;
+
+
+const centerLongitude =
+
+  center.longitude ??
+
+  center.Longitude ??
+
+  center.lon ??
+
+  center.lng ??
+
+  null;
+
+
+const distanceSource =
+
+  center.distance_source ||
+
+  center.distanceSource ||
+
+  "";
+
+
 return {
 
   ...center,
@@ -210,6 +271,15 @@ return {
   supported_crops:
     supportedCrops,
 
+  latitude:
+    centerLatitude,
+
+  longitude:
+    centerLongitude,
+
+  distance_source:
+    distanceSource,
+
 };
 
 };
@@ -229,9 +299,7 @@ const cleanDistrict =
 
 
 const cleanCrop =
-  farmerCrop
-    .toString()
-    .trim();
+  String(farmerCropName || "").trim();
 
 
 // -------------------------------------------------
@@ -294,6 +362,19 @@ try {
   );
 
 
+  console.log(
+    "Farmer village:",
+    farmerVillage
+  );
+
+
+  console.log(
+    "Farmer coordinates:",
+    farmerLatitude,
+    farmerLongitude
+  );
+
+
   const response =
     await axios.get(
 
@@ -308,6 +389,22 @@ try {
 
           crop:
             cleanCrop,
+
+          village:
+            farmerVillage,
+
+          mandal:
+            farmerMandal,
+
+          ...(farmerLatitude !== null &&
+          farmerLatitude !== undefined
+            ? { originLatitude: farmerLatitude }
+            : {}),
+
+          ...(farmerLongitude !== null &&
+          farmerLongitude !== undefined
+            ? { originLongitude: farmerLongitude }
+            : {}),
 
         },
 
@@ -617,8 +714,26 @@ const continueToTransport =
     center:
       selectedCenter,
 
-    crop:
+    // Preserve the full Crop Prediction result so TransportCost
+    // receives estimated/predicted production in TONS.
+    selectedCrop:
       farmerCrop,
+
+    // Keep a plain crop-name field for backward compatibility.
+    crop:
+      farmerCropName,
+
+    estimated_production:
+      typeof farmerCrop === "object" && farmerCrop !== null
+        ? (
+            farmerCrop?.estimated_production ??
+            farmerCrop?.estimatedProduction ??
+            farmerCrop?.predicted_production ??
+            farmerCrop?.predictedProduction ??
+            farmerCrop?.production ??
+            null
+          )
+        : null,
 
     district:
       activeDistrict,
@@ -716,98 +831,6 @@ return (
 
 
   <main style={styles.container}>
-
-
-    {/* =================================================
-        FARMER INFORMATION
-    ================================================= */}
-
-    <section style={styles.locationCard}>
-
-
-      <div style={styles.locationCardHeader}>
-
-
-        <div>
-
-          <p style={styles.cardLabel}>
-            FARMER PROCUREMENT DETAILS
-          </p>
-
-
-          <h2 style={styles.cardTitle}>
-            🌾 {farmerName}
-          </h2>
-
-
-        </div>
-
-
-        <div style={styles.locationBadge}>
-
-          🌾 Farmer Account
-
-        </div>
-
-
-      </div>
-
-
-      <div style={styles.locationGrid}>
-
-
-        <LocationItem
-          icon="🏘️"
-          label="Village"
-          value={
-            farmerVillage ||
-            "Not available"
-          }
-        />
-
-
-        <LocationItem
-          icon="📍"
-          label="Mandal"
-          value={
-            farmerMandal ||
-            "Not available"
-          }
-        />
-
-
-        <LocationItem
-          icon="🏛️"
-          label="District"
-          value={
-            farmerDistrict ||
-            "Not available"
-          }
-        />
-
-
-        <LocationItem
-          icon="🌾"
-          label="Selected Crop"
-          value={
-            farmerCrop ||
-            "Not available"
-          }
-        />
-
-
-      </div>
-
-
-      <p style={styles.locationHelp}>
-
-        Procurement centers are suggested
-        based on your district and selected crop.
-
-      </p>
-
-
-    </section>
 
 
     {/* =================================================
@@ -936,53 +959,6 @@ return (
 
 
     {/* =================================================
-        ACTIVE INFORMATION
-    ================================================= */}
-
-    <div style={styles.activeSearch}>
-
-
-      <div>
-
-
-        <span style={styles.activeLabel}>
-          CURRENT SEARCH
-        </span>
-
-
-        <h2 style={styles.activeDistrict}>
-          📍 {activeDistrict || "Not selected"}
-        </h2>
-
-
-        <p style={styles.cropInfo}>
-
-          🌾 Crop:{" "}
-
-          <strong>
-            {farmerCrop || "Not selected"}
-          </strong>
-
-        </p>
-
-
-      </div>
-
-
-      <div style={styles.centerCount}>
-
-        🏢 {filteredCenters.length} Center
-        {filteredCenters.length !== 1
-          ? "s"
-          : ""}
-
-      </div>
-
-
-    </div>
-
-
-    {/* =================================================
         ERROR
     ================================================= */}
 
@@ -1047,7 +1023,7 @@ return (
         <p>
 
           Searching procurement centers
-          for <b>{farmerCrop}</b>
+          for <b>{farmerCropName}</b>
           {" "}in <b>{activeDistrict}</b>
 
         </p>
@@ -1082,7 +1058,7 @@ return (
           <p>
 
             We could not find procurement
-            centers for {farmerCrop} in
+            centers for {farmerCropName} in
             {" "}{activeDistrict}.
 
           </p>
@@ -1116,41 +1092,6 @@ return (
       filteredCenters.length > 0 && (
 
         <section>
-
-
-          <div style={styles.sectionHeading}>
-
-
-            <div>
-
-              <h2>
-                Suggested Centers for {farmerCrop}
-              </h2>
-
-
-              <p>
-
-                Select one procurement center
-                to continue with transportation.
-
-              </p>
-
-
-            </div>
-
-
-            {selectedCenter && (
-
-              <div style={styles.selectedBadge}>
-
-                ✓ 1 Center Selected
-
-              </div>
-
-            )}
-
-
-          </div>
 
 
           <div style={styles.centerGrid}>
@@ -1267,10 +1208,25 @@ return (
                       {distance !== null && (
 
                         <Detail
-                          icon="🚛"
-                          label="Distance"
+                          icon="📏"
+                          label="Straight-Line Distance"
                           value={
-                            `${distance} KM`
+                            `${Number(distance).toFixed(2)} KM`
+                          }
+                        />
+
+                      )}
+
+
+                      {center.distance_source && (
+
+                        <Detail
+                          icon="🧭"
+                          label="Distance Source"
+                          value={
+                            center.distance_source === "haversine"
+                              ? "Haversine (Coordinates)"
+                              : center.distance_source
                           }
                         />
 
@@ -1364,7 +1320,7 @@ return (
                   🌾 Crop:
                   {" "}
                   <strong>
-                    {farmerCrop}
+                    {farmerCropName}
                   </strong>
 
                 </p>
@@ -1531,7 +1487,7 @@ alignItems:
   "center",
 
 gap:
-  "20px",
+  "18px",
 
 },
 
@@ -2215,13 +2171,28 @@ fontSize:
 
 },
 
+centersToolbar: {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: "12px",
+  margin: "4px 0 16px",
+  padding: "0 2px",
+},
+
+centersToolbarText: {
+  color: "#557064",
+  fontSize: "13px",
+  fontWeight: 700,
+},
+
 centerGrid: {
 
 display:
   "grid",
 
 gridTemplateColumns:
-  "repeat(auto-fit, minmax(300px, 1fr))",
+  "repeat(3, minmax(0, 1fr))",
 
 gap:
   "20px",
@@ -2233,20 +2204,32 @@ centerCard: {
 position:
   "relative",
 
+minWidth:
+  0,
+
+width:
+  "100%",
+
+boxSizing:
+  "border-box",
+
+overflow:
+  "hidden",
+
 background:
   "white",
 
 padding:
-  "25px",
+  "18px",
 
 borderRadius:
-  "16px",
+  "20px",
 
 border:
   "1px solid #e6ece8",
 
 boxShadow:
-  "0 4px 16px rgba(0,0,0,0.05)",
+  "0 12px 30px rgba(18,70,46,0.09)",
 
 },
 
@@ -2327,6 +2310,12 @@ centerName: {
 color:
   "#254235",
 
+overflowWrap:
+  "anywhere",
+
+wordBreak:
+  "break-word",
+
 margin:
   "0 0 8px",
 
@@ -2340,6 +2329,12 @@ centerId: {
 color:
   "#7a847f",
 
+overflowWrap:
+  "anywhere",
+
+wordBreak:
+  "break-word",
+
 fontSize:
   "12px",
 
@@ -2350,27 +2345,42 @@ margin:
 
 detailBox: {
 
+width:
+  "100%",
+
+boxSizing:
+  "border-box",
+
 background:
-  "#f7f9f8",
+  "#f7faf8",
+
+border:
+  "1px solid #e4eee8",
 
 borderRadius:
-  "10px",
+  "14px",
 
 padding:
-  "8px 15px",
+  "6px 12px",
+
+overflow:
+  "hidden",
 
 },
 
 detailRow: {
 
 display:
-  "flex",
+  "grid",
 
-justifyContent:
-  "space-between",
+gridTemplateColumns:
+  "minmax(0, 1fr) minmax(0, 1.15fr)",
+
+alignItems:
+  "start",
 
 gap:
-  "15px",
+  "10px",
 
 padding:
   "10px 0",
@@ -2379,7 +2389,19 @@ borderBottom:
   "1px solid #e5ebe7",
 
 fontSize:
-  "13px",
+  "12.5px",
+
+lineHeight:
+  1.4,
+
+minWidth:
+  0,
+
+overflowWrap:
+  "anywhere",
+
+wordBreak:
+  "break-word",
 
 },
 

@@ -1,916 +1,834 @@
-import React, {
-useState
-} from "react";
-
-const API =
-"http://127.0.0.1:5000";
+import React, { useState } from "react";
 
 function ProcurementRequest({
-
-user,
-
-selectedCenter,
-
-selectedCrop,
-
-transportData,
-
-goBack,
-
-onRequestSent
-
+  user,
+  selectedCenter,
+  selectedCrop,
+  goBack,
+  onRequestSent
 }) {
+  const [quantity, setQuantity] = useState("");
+  const [vehicle, setVehicle] = useState("Medium Truck");
+  const [transportCost, setTransportCost] = useState("");
 
-const [quantity, setQuantity] =
-useState(
-transportData?.quantity ||
-""
-);
-
-const [crop, setCrop] =
-useState(
-selectedCrop ||
-user?.primary_crop ||
-user?.crop ||
-""
-);
-
-const [loading, setLoading] =
-useState(false);
-
-const [error, setError] =
-useState("");
-
-const [success, setSuccess] =
-useState("");
-
-const farmerName =
-user?.full_name ||
-user?.name ||
-user?.farmer_name ||
-user?.username ||
-"Farmer";
-
-const farmerId =
-user?.id ||
-user?.farmer_id ||
-user?.user_id ||
-1234;
-
-const mobile =
-user?.mobile_number ||
-user?.mobile ||
-user?.phone ||
-"";
-
-const district =
-user?.district ||
-user?.District ||
-"";
-
-const centerName =
-selectedCenter?.center_name ||
-selectedCenter?.name ||
-"";
-
-const centerId =
-selectedCenter?.center_id ||
-selectedCenter?.id ||
-"";
-
-const centerDistrict =
-selectedCenter?.district ||
-district;
-
-const centerLocation =
-selectedCenter?.location ||
-selectedCenter?.mandal ||
-"";
-
-const distanceKm =
-transportData?.distance ??
-selectedCenter?.distance_km ??
-0;
-
-const vehicle =
-transportData?.vehicle ||
-"Medium Truck";
-
-const transportCost =
-transportData?.totalCost ??
-transportData?.transport_cost ??
-0;
-
-const handleSubmit = async (
-event
-) => {
-
-event.preventDefault();
-
-
-setError("");
-
-setSuccess("");
-
-
-if (
-  !quantity ||
-  Number(quantity) <= 0
-) {
-
-  setError(
-    "Please enter a valid quantity."
+  const [distanceKm] = useState(
+    selectedCenter?.distance_km ||
+      selectedCenter?.distance ||
+      0
   );
 
-  return;
-
-}
-
-
-if (!crop) {
-
-  setError(
-    "Please enter crop name."
-  );
-
-  return;
-
-}
-
-
-if (!centerName) {
-
-  setError(
-    "Please select a procurement center."
-  );
-
-  return;
-
-}
-
-
-const requestData = {
-
-  farmer_id:
-    farmerId,
-
-  farmer_name:
-    farmerName,
-
-  mobile_number:
-    mobile,
-
-  district:
-    district,
-
-  crop:
-    crop,
-
-  quantity:
-    Number(quantity),
-
-  center_id:
-    centerId,
-
-  center_name:
-    centerName,
-
-  center_district:
-    centerDistrict,
-
-  center_location:
-    centerLocation,
-
-  distance_km:
-    Number(distanceKm),
-
-  vehicle:
-    vehicle,
-
-  transport_cost:
-    Number(transportCost),
-
-  total_cost:
-    Number(transportCost)
-
-};
-
-
-console.log(
-  "SENDING PROCUREMENT REQUEST:",
-  requestData
-);
-
-
-try {
-
-  setLoading(
-    true
-  );
-
-
-  const response =
-    await fetch(
-
-      `${API}/api/procurement-requests`,
-
-      {
-
-        method:
-          "POST",
-
-        headers: {
-
-          "Content-Type":
-            "application/json"
-
-        },
-
-        body:
-          JSON.stringify(
-            requestData
-          )
-
-      }
-
-    );
-
-
-  const result =
-    await response.json();
-
-
-  console.log(
-    "PROCUREMENT RESPONSE:",
-    result
-  );
-
-
-  if (!response.ok) {
-
-    throw new Error(
-
-      result.message ||
-      result.error ||
-      "Unable to send procurement request."
-
-    );
-
-  }
-
-
-  if (
-    result.success === false
-  ) {
-
-    throw new Error(
-
-      result.message ||
-      result.error ||
-      "Unable to send procurement request."
-
-    );
-
-  }
-
-
-  const createdRequest =
-
-    result.request ||
-
-    result.data ||
-
-    {
-
-      ...requestData,
-
-      id:
-        result.request_id ||
-        result.id ||
-        null,
-
-      status:
-        result.status ||
-        "pending"
-
-    };
-
-
-  setSuccess(
-    "Procurement request created successfully."
-  );
-
-
-  console.log(
-    "CREATED REQUEST:",
-    createdRequest
-  );
-
-
-  setTimeout(() => {
-
-    if (onRequestSent) {
-
-      onRequestSent(
-        createdRequest
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+
+  // =====================================================
+  // FARMER DATA - used only for backend request
+  // =====================================================
+
+  const farmerName =
+    user?.full_name ||
+    user?.name ||
+    user?.farmer_name ||
+    user?.username ||
+    "Farmer";
+
+  const farmerId =
+    user?.id ||
+    user?.user_id ||
+    user?.farmer_id ||
+    1234;
+
+  const mobileNumber =
+    user?.mobile_number ||
+    user?.mobile ||
+    user?.phone ||
+    "";
+
+  const district =
+    user?.district ||
+    user?.District ||
+    "";
+
+  // =====================================================
+  // CENTER DATA
+  // =====================================================
+
+  const centerId =
+    selectedCenter?.center_id ||
+    selectedCenter?.id ||
+    "";
+
+  const centerName =
+    selectedCenter?.center_name ||
+    selectedCenter?.name ||
+    "Procurement Center";
+
+  const centerDistrict =
+    selectedCenter?.district ||
+    selectedCenter?.center_district ||
+    district ||
+    "";
+
+  const centerLocation =
+    selectedCenter?.location ||
+    selectedCenter?.center_location ||
+    selectedCenter?.village ||
+    "-";
+
+  const crop =
+    selectedCrop ||
+    selectedCenter?.crop ||
+    "";
+
+  const totalCapacity =
+    selectedCenter?.total_capacity ??
+    selectedCenter?.capacity ??
+    selectedCenter?.capacity_tons ??
+    "-";
+
+  const availableCapacity =
+    selectedCenter?.available_capacity ??
+    selectedCenter?.available_capacity_tons ??
+    "-";
+
+  // =====================================================
+  // SUBMIT REQUEST
+  // =====================================================
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+
+    setError("");
+    setSuccess("");
+
+    if (!selectedCenter) {
+      setError(
+        "Please select a procurement center first."
       );
-
+      return;
     }
 
-  }, 1000);
+    if (!crop) {
+      setError("Please select a crop first.");
+      return;
+    }
 
+    const numericQuantity = Number(quantity);
 
-} catch (error) {
+    if (
+      !quantity ||
+      Number.isNaN(numericQuantity) ||
+      numericQuantity <= 0
+    ) {
+      setError(
+        "Please enter a valid procurement quantity."
+      );
+      return;
+    }
 
-  console.error(
-    "PROCUREMENT REQUEST ERROR:",
-    error
+    const numericDistance =
+      Number(distanceKm) || 0;
+
+    const numericTransportCost =
+      Number(transportCost) || 0;
+
+    const payload = {
+      farmer_id: farmerId,
+      farmer_name: farmerName,
+      mobile_number: mobileNumber,
+      district: district,
+
+      crop: crop,
+      quantity: numericQuantity,
+
+      center_id: String(centerId),
+      center_name: centerName,
+      center_district: centerDistrict,
+      center_location: centerLocation,
+
+      distance_km: numericDistance,
+      vehicle: vehicle,
+
+      transport_cost: numericTransportCost,
+      total_cost: numericTransportCost
+    };
+
+    setLoading(true);
+
+    try {
+      const response = await fetch(
+        "http://127.0.0.1:5000/api/procurement-requests",
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type": "application/json"
+          },
+
+          body: JSON.stringify(payload)
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        setError(
+          result?.message ||
+            "Unable to send procurement request."
+        );
+        return;
+      }
+
+      if (result?.success !== true) {
+        setError(
+          result?.message ||
+            "Unable to send procurement request."
+        );
+        return;
+      }
+
+      setSuccess(
+        result?.message ||
+          "Procurement request submitted successfully."
+      );
+
+      const requestData =
+        result?.request || {
+          ...payload,
+          status: "pending"
+        };
+
+      const requestStatus =
+        requestData?.status || "pending";
+
+      setTimeout(() => {
+        if (
+          typeof onRequestSent === "function"
+        ) {
+          onRequestSent(
+            requestStatus,
+            requestData
+          );
+        }
+      }, 500);
+    } catch (requestError) {
+      console.error(
+        "Procurement Request Error:",
+        requestError
+      );
+
+      setError(
+        requestError?.message ||
+          "Unable to send procurement request."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div style={styles.page}>
+
+      {/* =================================================
+          PAGE HEADER
+      ================================================= */}
+
+      <div style={styles.header}>
+        <div>
+          <div style={styles.eyebrow}>
+            PROCUREMENT REQUEST
+          </div>
+
+          <h1 style={styles.title}>
+            Submit Procurement Request
+          </h1>
+
+          <p style={styles.subtitle}>
+            Review the selected procurement center
+            and enter your request details.
+          </p>
+        </div>
+
+        {goBack && (
+          <button
+            type="button"
+            onClick={goBack}
+            style={styles.backButton}
+          >
+            ← Back
+          </button>
+        )}
+      </div>
+
+      <main style={styles.main}>
+
+        {/* =================================================
+            CENTER DETAILS
+        ================================================= */}
+
+        <section style={styles.centerCard}>
+
+          <div style={styles.centerHeader}>
+            <div style={styles.centerIcon}>
+              🏢
+            </div>
+
+            <div>
+              <div style={styles.smallHeading}>
+                SELECTED PROCUREMENT CENTER
+              </div>
+
+              <h2 style={styles.centerName}>
+                {centerName}
+              </h2>
+            </div>
+
+            <div style={styles.statusBadge}>
+              ● Available
+            </div>
+          </div>
+
+          <div style={styles.centerGrid}>
+
+            <CenterInfo
+              label="Center ID"
+              value={centerId || "-"}
+            />
+
+            <CenterInfo
+              label="District"
+              value={centerDistrict || "-"}
+            />
+
+            <CenterInfo
+              label="Location"
+              value={centerLocation || "-"}
+            />
+
+            <CenterInfo
+              label="Distance"
+              value={`${Number(
+                distanceKm || 0
+              ).toFixed(2)} KM`}
+            />
+
+            <CenterInfo
+              label="Total Capacity"
+              value={
+                totalCapacity === "-"
+                  ? "-"
+                  : `${totalCapacity} Tons`
+              }
+            />
+
+            <CenterInfo
+              label="Available Capacity"
+              value={
+                availableCapacity === "-"
+                  ? "-"
+                  : `${availableCapacity} Tons`
+              }
+              highlight
+            />
+
+          </div>
+        </section>
+
+        {/* =================================================
+            REQUEST DETAILS - NO CARD
+        ================================================= */}
+
+        <section style={styles.requestSection}>
+
+          <div style={styles.requestHeading}>
+
+            <div>
+              <div style={styles.smallHeading}>
+                REQUEST DETAILS
+              </div>
+
+              <h2 style={styles.requestTitle}>
+                Enter Procurement Information
+              </h2>
+            </div>
+
+            {crop && (
+              <div style={styles.cropBadge}>
+                {crop}
+              </div>
+            )}
+
+          </div>
+
+          {error && (
+            <div style={styles.errorBox}>
+              {error}
+            </div>
+          )}
+
+          {success && (
+            <div style={styles.successBox}>
+              ✓ {success}
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit}>
+
+            <div style={styles.formGrid}>
+
+              {/* CROP */}
+
+              <div style={styles.field}>
+                <label style={styles.label}>
+                  Crop
+                </label>
+
+                <input
+                  type="text"
+                  value={crop || ""}
+                  readOnly
+                  style={styles.readOnlyInput}
+                />
+              </div>
+
+              {/* QUANTITY */}
+
+              <div style={styles.field}>
+                <label style={styles.label}>
+                  Quantity (Tons)
+                </label>
+
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={quantity}
+                  onChange={(event) =>
+                    setQuantity(
+                      event.target.value
+                    )
+                  }
+                  placeholder="Enter quantity"
+                  style={styles.input}
+                />
+              </div>
+
+              {/* VEHICLE */}
+
+              <div style={styles.field}>
+                <label style={styles.label}>
+                  Vehicle
+                </label>
+
+                <select
+                  value={vehicle}
+                  onChange={(event) =>
+                    setVehicle(
+                      event.target.value
+                    )
+                  }
+                  style={styles.input}
+                >
+                  <option value="Mini Truck">
+                    Mini Truck
+                  </option>
+
+                  <option value="Medium Truck">
+                    Medium Truck
+                  </option>
+
+                  <option value="Large Truck">
+                    Large Truck
+                  </option>
+
+                  <option value="Heavy Truck">
+                    Heavy Truck
+                  </option>
+                </select>
+              </div>
+
+              {/* TRANSPORT COST */}
+
+              <div style={styles.field}>
+                <label style={styles.label}>
+                  Transport Cost (₹)
+                </label>
+
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={transportCost}
+                  onChange={(event) =>
+                    setTransportCost(
+                      event.target.value
+                    )
+                  }
+                  placeholder="Enter transport cost"
+                  style={styles.input}
+                />
+              </div>
+
+            </div>
+
+            {/* SUBMIT */}
+
+            <div style={styles.submitArea}>
+
+              <p style={styles.note}>
+                Your request will be sent to the
+                procurement authority for approval.
+              </p>
+
+              <button
+                type="submit"
+                disabled={loading}
+                style={{
+                  ...styles.submitButton,
+                  opacity: loading ? 0.7 : 1,
+                  cursor:
+                    loading
+                      ? "not-allowed"
+                      : "pointer"
+                }}
+              >
+                {loading
+                  ? "Submitting..."
+                  : "Submit Procurement Request →"}
+              </button>
+
+            </div>
+
+          </form>
+        </section>
+
+      </main>
+    </div>
   );
-
-
-  setError(
-
-    error.message ||
-
-    "Unable to send procurement request."
-
-  );
-
-
-} finally {
-
-  setLoading(
-    false
-  );
-
 }
 
-};
-
-return (
-
-<div style={styles.page}>
-
-
-  <header style={styles.header}>
-
-
-    <button
-      onClick={goBack}
-      style={styles.backButton}
-    >
-      ← Back
-    </button>
-
-
-    <div>
-
-      <h1 style={styles.title}>
-        Send Procurement Request
-      </h1>
-
-
-      <p style={styles.subtitle}>
-        Enter your crop details and send the request.
-      </p>
-
-    </div>
-
-
-  </header>
-
-
-  <main style={styles.main}>
-
-
-    <div style={styles.container}>
-
-
-      <section style={styles.infoCard}>
-
-
-        <h2>
-          👨‍🌾 Farmer Details
-        </h2>
-
-
-        <p>
-
-          <b>Name:</b>
-
-          {" "}
-
-          {farmerName}
-
-        </p>
-
-
-        <p>
-
-          <b>Mobile:</b>
-
-          {" "}
-
-          {mobile || "-"}
-
-        </p>
-
-
-        <p>
-
-          <b>District:</b>
-
-          {" "}
-
-          {district || "-"}
-
-        </p>
-
-
-      </section>
-
-
-      <section style={styles.infoCard}>
-
-
-        <h2>
-          🏢 Procurement Center
-        </h2>
-
-
-        <p>
-
-          <b>Center ID:</b>
-
-          {" "}
-
-          {centerId || "-"}
-
-        </p>
-
-
-        <p>
-
-          <b>Center Name:</b>
-
-          {" "}
-
-          {centerName || "-"}
-
-        </p>
-
-
-        <p>
-
-          <b>Location:</b>
-
-          {" "}
-
-          {centerLocation || "-"}
-
-        </p>
-
-
-        <p>
-
-          <b>Distance:</b>
-
-          {" "}
-
-          {distanceKm} KM
-
-        </p>
-
-
-      </section>
-
-
-      <form
-        onSubmit={handleSubmit}
-        style={styles.formCard}
+/* =====================================================
+   CENTER INFO COMPONENT
+===================================================== */
+
+function CenterInfo({
+  label,
+  value,
+  highlight = false
+}) {
+  return (
+    <div style={styles.infoItem}>
+
+      <span style={styles.infoLabel}>
+        {label}
+      </span>
+
+      <strong
+        style={
+          highlight
+            ? styles.highlightValue
+            : styles.infoValue
+        }
       >
-
-
-        <h2>
-          🌾 Crop Request Details
-        </h2>
-
-
-        {error && (
-
-          <div style={styles.error}>
-
-            ❌ {error}
-
-          </div>
-
-        )}
-
-
-        {success && (
-
-          <div style={styles.success}>
-
-            ✅ {success}
-
-          </div>
-
-        )}
-
-
-        <div style={styles.field}>
-
-
-          <label>
-            Crop Name
-          </label>
-
-
-          <input
-
-            type="text"
-
-            value={crop}
-
-            onChange={(event) =>
-              setCrop(
-                event.target.value
-              )
-            }
-
-            required
-
-            style={styles.input}
-
-          />
-
-
-        </div>
-
-
-        <div style={styles.field}>
-
-
-          <label>
-            Quantity (Tons)
-          </label>
-
-
-          <input
-
-            type="number"
-
-            min="0.01"
-
-            step="0.01"
-
-            value={quantity}
-
-            onChange={(event) =>
-              setQuantity(
-                event.target.value
-              )
-            }
-
-            placeholder="Enter quantity"
-
-            required
-
-            style={styles.input}
-
-          />
-
-
-        </div>
-
-
-        <div style={styles.summary}>
-
-
-          <h3>
-            🚛 Transport Details
-          </h3>
-
-
-          <p>
-
-            <b>Vehicle:</b>
-
-            {" "}
-
-            {vehicle}
-
-          </p>
-
-
-          <p>
-
-            <b>Distance:</b>
-
-            {" "}
-
-            {distanceKm} KM
-
-          </p>
-
-
-          <p>
-
-            <b>Transport Cost:</b>
-
-            {" "}
-
-            ₹{transportCost}
-
-          </p>
-
-
-        </div>
-
-
-        <button
-
-          type="submit"
-
-          disabled={loading}
-
-          style={{
-
-            ...styles.submitButton,
-
-            opacity:
-              loading
-                ? 0.7
-                : 1
-
-          }}
-
-        >
-
-          {loading
-            ? "Sending Request..."
-            : "📨 Send Procurement Request"}
-
-        </button>
-
-
-      </form>
-
+        {String(value)}
+      </strong>
 
     </div>
-
-
-  </main>
-
-
-</div>
-
-);
-
+  );
 }
+
+/* =====================================================
+   STYLES
+===================================================== */
 
 const styles = {
 
-page: {
-
-minHeight:
-  "100vh",
-
-background:
-  "#f4f7f5",
-
-fontFamily:
-  "Arial, sans-serif"
-
-},
-
-header: {
-
-background:
-  "white",
-
-padding:
-  "25px 8%",
-
-display:
-  "flex",
-
-alignItems:
-  "center",
-
-gap:
-  "25px",
-
-boxShadow:
-  "0 2px 8px rgba(0,0,0,0.05)"
-
-},
-
-backButton: {
-
-border:
-  "none",
-
-background:
-  "#eaf4ed",
-
-padding:
-  "10px 18px",
-
-borderRadius:
-  "8px",
-
-cursor:
-  "pointer"
-
-},
-
-title: {
-
-margin:
-  0,
-
-color:
-  "#1f4d3a"
-
-},
-
-subtitle: {
-
-color:
-  "#777"
-
-},
-
-main: {
-
-padding:
-  "40px 20px"
-
-},
-
-container: {
-
-maxWidth:
-  "850px",
-
-margin:
-  "auto"
-
-},
-
-infoCard: {
-
-background:
-  "white",
-
-padding:
-  "25px",
-
-borderRadius:
-  "14px",
-
-marginBottom:
-  "20px",
-
-boxShadow:
-  "0 2px 8px rgba(0,0,0,0.05)"
-
-},
-
-formCard: {
-
-background:
-  "white",
-
-padding:
-  "30px",
-
-borderRadius:
-  "14px",
-
-boxShadow:
-  "0 2px 8px rgba(0,0,0,0.05)"
-
-},
-
-field: {
-
-display:
-  "flex",
-
-flexDirection:
-  "column",
-
-marginBottom:
-  "20px",
-
-gap:
-  "8px"
-
-},
-
-input: {
-
-padding:
-  "12px",
-
-border:
-  "1px solid #ccc",
-
-borderRadius:
-  "8px",
-
-fontSize:
-  "16px"
-
-},
-
-summary: {
-
-background:
-  "#f1f8f3",
-
-padding:
-  "20px",
-
-borderRadius:
-  "10px",
-
-marginBottom:
-  "20px"
-
-},
-
-submitButton: {
-
-width:
-  "100%",
-
-padding:
-  "15px",
-
-border:
-  "none",
-
-borderRadius:
-  "10px",
-
-background:
-  "#1f6b4f",
-
-color:
-  "white",
-
-fontSize:
-  "16px",
-
-fontWeight:
-  "bold",
-
-cursor:
-  "pointer"
-
-},
-
-error: {
-
-background:
-  "#ffe5e5",
-
-color:
-  "#b00020",
-
-padding:
-  "12px",
-
-borderRadius:
-  "8px",
-
-marginBottom:
-  "20px"
-
-},
-
-success: {
-
-background:
-  "#e3f7e8",
-
-color:
-  "#146c2e",
-
-padding:
-  "12px",
-
-borderRadius:
-  "8px",
-
-marginBottom:
-  "20px"
-
-}
-
+  page: {
+    width: "100%",
+    minHeight: "100%",
+    boxSizing: "border-box",
+    color: "#183e2c",
+    fontFamily:
+      "Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+  },
+
+  /* HEADER */
+
+  header: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: "20px",
+    marginBottom: "24px"
+  },
+
+  eyebrow: {
+    marginBottom: "7px",
+    color: "#2f805b",
+    fontSize: "13px",
+    fontWeight: "900",
+    letterSpacing: "1.5px"
+  },
+
+  title: {
+    margin: 0,
+    color: "#123e2b",
+    fontSize: "34px",
+    fontWeight: "800",
+    letterSpacing: "-0.7px"
+  },
+
+  subtitle: {
+    margin: "8px 0 0",
+    color: "#718279",
+    fontSize: "16px",
+    lineHeight: "1.5"
+  },
+
+  backButton: {
+    padding: "11px 18px",
+    border: "1px solid #d3e1d8",
+    borderRadius: "10px",
+    background: "#ffffff",
+    color: "#246044",
+    fontSize: "14px",
+    fontWeight: "800",
+    cursor: "pointer"
+  },
+
+  main: {
+    display: "grid",
+    gap: "28px"
+  },
+
+  /* CENTER CARD */
+
+  centerCard: {
+    padding: "26px",
+    border: "1px solid #dbe8df",
+    borderRadius: "18px",
+    background: "#ffffff",
+    boxShadow:
+      "0 10px 30px rgba(18, 69, 46, 0.07)"
+  },
+
+  centerHeader: {
+    display: "flex",
+    alignItems: "center",
+    gap: "14px",
+    marginBottom: "22px"
+  },
+
+  centerIcon: {
+    width: "52px",
+    height: "52px",
+    display: "grid",
+    placeItems: "center",
+    flexShrink: 0,
+    borderRadius: "14px",
+    background: "#eaf5ee",
+    fontSize: "24px"
+  },
+
+  smallHeading: {
+    color: "#34805e",
+    fontSize: "12px",
+    fontWeight: "900",
+    letterSpacing: "1.2px"
+  },
+
+  centerName: {
+    margin: "4px 0 0",
+    color: "#173f2d",
+    fontSize: "24px",
+    fontWeight: "800"
+  },
+
+  statusBadge: {
+    marginLeft: "auto",
+    padding: "9px 14px",
+    borderRadius: "999px",
+    background: "#edf8f0",
+    color: "#23804c",
+    fontSize: "13px",
+    fontWeight: "800"
+  },
+
+  centerGrid: {
+    display: "grid",
+    gridTemplateColumns:
+      "repeat(3, minmax(0, 1fr))",
+    gap: "12px"
+  },
+
+  infoItem: {
+    minWidth: 0,
+    padding: "16px",
+    border: "1px solid #e3ece6",
+    borderRadius: "12px",
+    background: "#f9fcfa"
+  },
+
+  infoLabel: {
+    display: "block",
+    marginBottom: "7px",
+    color: "#7b8c82",
+    fontSize: "12px",
+    fontWeight: "800",
+    textTransform: "uppercase",
+    letterSpacing: "0.5px"
+  },
+
+  infoValue: {
+    display: "block",
+    color: "#254b37",
+    fontSize: "16px",
+    fontWeight: "800",
+    overflowWrap: "anywhere"
+  },
+
+  highlightValue: {
+    display: "block",
+    color: "#1c844d",
+    fontSize: "16px",
+    fontWeight: "900"
+  },
+
+  /* REQUEST - NO CARD */
+
+  requestSection: {
+    padding: "4px 6px 10px"
+  },
+
+  requestHeading: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: "16px",
+    marginBottom: "22px"
+  },
+
+  requestTitle: {
+    margin: "5px 0 0",
+    color: "#173f2d",
+    fontSize: "25px",
+    fontWeight: "800"
+  },
+
+  cropBadge: {
+    padding: "9px 16px",
+    borderRadius: "999px",
+    background: "#edf6e6",
+    color: "#52742d",
+    fontSize: "14px",
+    fontWeight: "800"
+  },
+
+  /* FORM */
+
+  formGrid: {
+    display: "grid",
+    gridTemplateColumns:
+      "repeat(2, minmax(0, 1fr))",
+    gap: "20px"
+  },
+
+  field: {
+    minWidth: 0
+  },
+
+  label: {
+    display: "block",
+    marginBottom: "9px",
+    color: "#355844",
+    fontSize: "15px",
+    fontWeight: "800"
+  },
+
+  input: {
+    width: "100%",
+    height: "52px",
+    boxSizing: "border-box",
+    padding: "0 15px",
+    border: "1px solid #d4e1d8",
+    borderRadius: "11px",
+    outline: "none",
+    background: "#ffffff",
+    color: "#244a36",
+    fontSize: "16px"
+  },
+
+  readOnlyInput: {
+    width: "100%",
+    height: "52px",
+    boxSizing: "border-box",
+    padding: "0 15px",
+    border: "1px solid #dce6df",
+    borderRadius: "11px",
+    outline: "none",
+    background: "#f4f8f5",
+    color: "#355844",
+    fontSize: "16px",
+    fontWeight: "700"
+  },
+
+  /* SUBMIT */
+
+  submitArea: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: "20px",
+    marginTop: "28px",
+    paddingTop: "22px",
+    borderTop: "1px solid #e8efea"
+  },
+
+  note: {
+    maxWidth: "520px",
+    margin: 0,
+    color: "#75877d",
+    fontSize: "14px",
+    lineHeight: "1.6"
+  },
+
+  submitButton: {
+    minHeight: "52px",
+    padding: "0 26px",
+    border: "none",
+    borderRadius: "11px",
+    background:
+      "linear-gradient(135deg, #176b48, #25875f)",
+    color: "#ffffff",
+    fontSize: "15px",
+    fontWeight: "900",
+    boxShadow:
+      "0 10px 22px rgba(24, 107, 72, 0.18)"
+  },
+
+  /* MESSAGES */
+
+  errorBox: {
+    marginBottom: "20px",
+    padding: "13px 15px",
+    border: "1px solid #f0cbc7",
+    borderRadius: "10px",
+    background: "#fff4f2",
+    color: "#a3443b",
+    fontSize: "14px",
+    fontWeight: "600"
+  },
+
+  successBox: {
+    marginBottom: "20px",
+    padding: "13px 15px",
+    border: "1px solid #cce7d5",
+    borderRadius: "10px",
+    background: "#f0faf3",
+    color: "#236b43",
+    fontSize: "14px",
+    fontWeight: "700"
+  }
 };
 
 export default ProcurementRequest;
