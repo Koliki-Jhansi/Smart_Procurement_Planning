@@ -1,7 +1,8 @@
 
 import React, { useState } from "react";
+import API_BASE_URL from "../apiConfig";
 
-const API = "http://127.0.0.1:5000/api/admin";
+const API = `${API_BASE_URL}/api/admin`;
 
 function AdminUploadDataset({ user, goBack }) {
   const [loading, setLoading] = useState(false);

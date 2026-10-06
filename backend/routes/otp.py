@@ -205,7 +205,8 @@ def verify_otp():
 
         "message":
             "OTP verified successfully",
-"       verified": True,
+
+        "verified": True,
 
         "mobile_number":
             mobile_number

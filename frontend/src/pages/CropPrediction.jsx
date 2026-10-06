@@ -1,13 +1,12 @@
 import React, { useState } from "react";
 import axios from "axios";
-
-const API = "http://127.0.0.1:5000/api";
+import API_BASE_URL from "../apiConfig";
 
 function CropPrediction({ user, goBack, onCropSelected }) {
   const [crop, setCrop] = useState("Paddy");
   const [season, setSeason] = useState("Kharif");
   const [area, setArea] = useState("");
-  const [year, setYear] = useState("2026");
+  const [year] = useState(() => String(new Date().getFullYear()));
 
   const [prediction, setPrediction] = useState(null);
   const [error, setError] = useState("");
@@ -72,7 +71,7 @@ function CropPrediction({ user, goBack, onCropSelected }) {
 
       console.log(
         "URL:",
-        `${API}/predict`
+        `${API_BASE_URL}/api/predict`
       );
 
       console.log(
@@ -89,7 +88,7 @@ function CropPrediction({ user, goBack, onCropSelected }) {
       // ==========================================
 
       const response = await axios.post(
-        `${API}/predict`,
+        `${API_BASE_URL}/api/predict`,
         requestData,
         {
           headers: {
@@ -197,7 +196,7 @@ function CropPrediction({ user, goBack, onCropSelected }) {
         );
 
         setError(
-          "Unable to connect to Flask server. Please make sure Flask is running on http://127.0.0.1:5000."
+          "Unable to connect to Flask server. Please make sure the backend server is running."
         );
       }
 
@@ -218,7 +217,8 @@ function CropPrediction({ user, goBack, onCropSelected }) {
   };
 
   return (
-    <div style={styles.page}>
+    <
+      div style={styles.page}>
       <div style={styles.hero}>
         <div>
           <div style={styles.eyebrow}>SMART AGRICULTURE • AI PRODUCTION ESTIMATE</div>
@@ -312,25 +312,20 @@ function CropPrediction({ user, goBack, onCropSelected }) {
                   <span style={styles.unit}>hectares</span>
                 </div>
               </div>
-
-              <div style={styles.field}>
-                <label style={styles.label}>Prediction Year</label>
-                <input
-                  type="number"
-                  min="2000"
-                  value={year}
-                  onChange={(e) => setYear(e.target.value)}
-                  style={styles.input}
-                />
-              </div>
             </div>
 
-            <button type="submit" disabled={loading} style={{
-              ...styles.predictButton,
-              opacity: loading ? 0.72 : 1,
-              cursor: loading ? "wait" : "pointer",
-            }}>
-              <span>{loading ? "Calculating prediction..." : "Predict Production"}</span>
+            <button
+              type="submit"
+              disabled={loading}
+              style={{
+                ...styles.predictButton,
+                opacity: loading ? 0.72 : 1,
+                cursor: loading ? "wait" : "pointer",
+              }}
+            >
+              <span>
+                {loading ? "Calculating prediction..." : "Predict Production"}
+              </span>
               <span>{loading ? "⏳" : "→"}</span>
             </button>
           </form>
@@ -378,7 +373,6 @@ function CropPrediction({ user, goBack, onCropSelected }) {
                 <ResultItem label="Crop" value={crop} />
                 <ResultItem label="Season" value={season} />
                 <ResultItem label="District" value={district || "-"} />
-                <ResultItem label="Year" value={year} />
                 <ResultItem label="Cultivated Area" value={`${area} hectares`} wide />
               </div>
 

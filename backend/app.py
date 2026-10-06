@@ -32,39 +32,83 @@ from models.notification import Notification
 from models.appointment import Appointment
 
 
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
 app = Flask(__name__)
 
+database_url = os.environ.get("DATABASE_URL")
+if database_url:
+    if database_url.startswith("postgres://"):
+        database_url = database_url.replace("postgres://", "postgresql://", 1)
+    app.config["SQLALCHEMY_DATABASE_URI"] = database_url
+else:
+    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///smart_procurement.db"
 
-app.config[
-    "SQLALCHEMY_DATABASE_URI"
-] = "sqlite:///smart_procurement.db"
-
-app.config[
-    "SQLALCHEMY_TRACK_MODIFICATIONS"
-] = False
-
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+app.config["SECRET_KEY"] = os.environ.get(
+    "SECRET_KEY", "smart-procurement-production-key-change-in-env"
+)
 
 db.init_app(app)
 
+# Ensure database tables exist automatically in production/WSGI
+with app.app_context():
+    try:
+        db.create_all()
+    except Exception as db_err:
+        print("Database initialization notice:", db_err)
+
+frontend_url = os.environ.get("FRONTEND_URL", "").strip()
+
+local_origins = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:5174",
+    "http://127.0.0.1:5174",
+    "http://localhost:5175",
+    "http://127.0.0.1:5175",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:5001",
+    "http://127.0.0.1:5001",
+]
+
+if frontend_url == "*":
+    allowed_origins = "*"
+elif frontend_url:
+    origins_set = set(local_origins)
+    for origin in frontend_url.split(","):
+        cleaned = origin.strip()
+        if cleaned:
+            origins_set.add(cleaned)
+            origins_set.add(cleaned.rstrip("/"))
+    allowed_origins = list(origins_set)
+else:
+    allowed_origins = local_origins
 
 CORS(
     app,
     resources={
-        r"/api/*": {
-            "origins": "*"
+        r"/*": {
+            "origins": allowed_origins
         }
     },
     allow_headers=[
         "Content-Type",
         "X-Admin-Mobile",
-        "Authorization"
+        "Authorization",
+        "Accept"
     ],
     methods=[
         "GET",
         "POST",
         "PUT",
         "DELETE",
-        "OPTIONS"
+        "OPTIONS",
+        "PATCH"
     ]
 )
 
@@ -222,64 +266,13 @@ def create_database_tables():
 
 
 if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5001))
+    debug = os.environ.get("FLASK_DEBUG", "true").lower() in ("true", "1", "yes")
 
-    create_database_tables()
-
-    print(
-        "Smart Crop Procurement Backend Started"
-    )
-
-    print(
-        "Backend URL: "
-        "http://127.0.0.1:5000"
-    )
-
-    print(
-        "Health URL: "
-        "http://127.0.0.1:5000/api/health"
-    )
-
-    print(
-        "Prediction URL: "
-        "http://127.0.0.1:5000/api/predict"
-    )
-
-    print(
-        "Centers URL: "
-        "http://127.0.0.1:5000/api/procurement/centers"
-    )
-
-    print(
-        "Procurement Request URL: "
-        "http://127.0.0.1:5000/api/procurement-requests"
-    )
-
-    print(
-        "Farmer Requests URL: "
-        "http://127.0.0.1:5000/"
-        "api/procurement-requests/farmer/<farmer_id>"
-    )
-
-    print(
-        "Transport URL: "
-        "http://127.0.0.1:5000/"
-        "api/transport/calculate"
-    )
-
-    print(
-        "Warehouse URL: "
-        "http://127.0.0.1:5000/"
-        "api/warehouse/centers?district=Palnadu"
-    )
-
-    print(
-        "Appointment Booking URL: "
-        "http://127.0.0.1:5000/"
-        "api/appointments/book"
-    )
+    print(f"Smart Crop Procurement Backend Started on port {port} (Debug: {debug})")
 
     app.run(
-        host="127.0.0.1",
-        port=5000,
-        debug=True
+        host="0.0.0.0" if not debug else "127.0.0.1",
+        port=port,
+        debug=debug
     )

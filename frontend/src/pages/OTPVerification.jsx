@@ -1,8 +1,7 @@
 
 import React, { useState } from "react";
 import axios from "axios";
-
-const API = "http://127.0.0.1:5000/api";
+import API_BASE_URL from "../apiConfig";
 
 function OTPVerification({ goLogin, onVerified }) {
   const [mobileNumber, setMobileNumber] = useState("");
@@ -29,7 +28,7 @@ function OTPVerification({ goLogin, onVerified }) {
     setLoading(true);
 
     try {
-      const response = await axios.post(`${API}/otp/send`, {
+      const response = await axios.post(`${API_BASE_URL}/api/otp/send`, {
         mobile_number: mobileNumber,
       });
 
@@ -87,7 +86,7 @@ function OTPVerification({ goLogin, onVerified }) {
     setLoading(true);
 
     try {
-      const response = await axios.post(`${API}/otp/verify`, {
+      const response = await axios.post(`${API_BASE_URL}/api/otp/verify`, {
         mobile_number: mobileNumber,
         otp: otp,
       });

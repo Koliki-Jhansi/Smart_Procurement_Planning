@@ -3,8 +3,7 @@ import React, {
   useState,
 } from "react";
 import axios from "axios";
-
-const API = "http://127.0.0.1:5000/api";
+import API_BASE_URL from "../apiConfig";
 const heroImage = "/assets/procurement-hero.png";
 
 function Register({ goLogin }) {
@@ -236,7 +235,7 @@ function Register({ goLogin }) {
 
       const response =
         await axios.post(
-          `${API}/auth/register`,
+          `${API_BASE_URL}/api/auth/register`,
           payload,
           {
             headers: {
