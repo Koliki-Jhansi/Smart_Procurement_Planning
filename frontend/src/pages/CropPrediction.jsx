@@ -523,6 +523,7 @@ const styles = {
     outline: "none",
     background: "#fbfdfb",
     color: "#254735",
+    colorScheme: "light",
     fontSize: 12,
   },
   readOnlyField: {
@@ -562,6 +563,7 @@ const styles = {
     outline: "none",
     background: "transparent",
     color: "#254735",
+    colorScheme: "light",
     fontSize: 12,
   },
   unit: {

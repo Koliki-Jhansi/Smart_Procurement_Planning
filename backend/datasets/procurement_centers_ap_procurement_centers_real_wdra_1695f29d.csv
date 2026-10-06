@@ -1,0 +1,131 @@
+center_id,center_name,state,district,mandal,location,pincode,capacity_tons,latitude,longitude
+CNTR1001,CW Vadlamudi Depot,Andhra Pradesh,Guntur,Chebrolu,Vadlamudi,522213,5000,16.2415,80.5621
+CNTR1002,CWC Duggirala Warehouse,Andhra Pradesh,Guntur,Duggirala,Duggirala,522330,1700,16.3265,80.6272
+CNTR1003,CWC Guntur Central,Andhra Pradesh,Guntur,Guntur,Nallapadu,522005,1700,16.2942,80.3951
+CNTR1004,APSWC Tadepalli Facility,Andhra Pradesh,Guntur,Tadepalli,Tadepalli,522501,4100,16.4742,80.6033
+CNTR1005,APSWC Tenali Depot,Andhra Pradesh,Guntur,Tenali,Tenali,522201,5000,16.2435,80.6412
+CNTR1006,APSWC Narasaraopet Hub,Andhra Pradesh,Palnadu,Narasaraopet,Jonnalagadda,522601,2900,16.2351,80.0531
+CNTR1007,APSWC Piduguralla Complex,Andhra Pradesh,Palnadu,Piduguralla,Piduguralla,522413,1660,16.4842,79.8872
+CNTR1008,APSWC Nadikudi Center,Andhra Pradesh,Palnadu,Dachepalli,Nadikudi,522414,1000,16.5912,79.8785
+CNTR1009,APSWC Gurazala Yard,Andhra Pradesh,Palnadu,Gurazala,Gurazala,522415,3500,16.5815,79.5714
+CNTR1010,APSWC Sattenapalli Hub,Andhra Pradesh,Palnadu,Sattenapalli,Abburu,522403,4200,16.3985,80.1498
+CNTR1011,APSWC Repalle Center,Andhra Pradesh,Bapatla,Repalle,Repalle,522265,2150,16.0125,80.8445
+CNTR1012,APSWC Bapatla Plant,Andhra Pradesh,Bapatla,Bapatla,Bapatla,522101,2000,15.9044,80.4678
+CNTR1013,APSWC Chirala Yard,Andhra Pradesh,Bapatla,Chirala,Chirala,523155,3800,15.8246,80.3521
+CNTR1014,APSWC Martur Depot,Andhra Pradesh,Bapatla,Martur,Martur,523301,2700,15.9874,80.1124
+CNTR1015,APSWC Addanki Node,Andhra Pradesh,Bapatla,Addanki,Addanki,523201,3100,15.8115,79.9764
+CNTR1016,CW Vijayawada II Bhavanipuram,Andhra Pradesh,NTR,Vijayawada Urban,Bhavanipuram,520012,3000,16.535,80.5985
+CNTR1017,CWC Kedareswarapet Hub,Andhra Pradesh,NTR,Vijayawada Urban,Kedareswarapet,520003,1350,16.5312,80.6214
+CNTR1018,CWC Rayanapadu Storage,Andhra Pradesh,NTR,Vijayawada Rural,Rayanapadu,521241,5000,16.5714,80.5562
+CNTR1019,APSWC Nandigama Center,Andhra Pradesh,NTR,Nandigama,Nandigama,521185,4000,16.7725,80.2896
+CNTR1020,APSWC Tiruvuru Node,Andhra Pradesh,NTR,Tiruvuru,Tiruvuru,521235,3500,17.1147,80.6154
+CNTR1021,CWC Gudivada Complex,Andhra Pradesh,Krishna,Gudivada,Gudivada,521301,2300,16.4412,80.9924
+CNTR1022,CWC Machilipatnam Port Node,Andhra Pradesh,Krishna,Machilipatnam,Machilipatnam,521001,1700,16.1824,81.1325
+CNTR1023,APSWC Nuzvid Spices Node,Andhra Pradesh,Krishna,Nuzvid,Nuzvid,521201,4600,16.7885,80.8465
+CNTR1024,APSWC Pamarru Grain WH,Andhra Pradesh,Krishna,Pamarru,Pamarru,521322,2800,16.3214,81.0254
+CNTR1025,APSWC Challapalli Storage,Andhra Pradesh,Krishna,Challapalli,Challapalli,521126,3200,16.1185,80.9321
+CNTR1026,CW Adoni Cotton Hub,Andhra Pradesh,Kurnool,Adoni,Adoni,518301,10000,15.6312,77.2776
+CNTR1027,APSWC Kurnool City WH,Andhra Pradesh,Kurnool,Kurnool,Kurnool,518003,7400,15.8242,78.0351
+CNTR1028,APSWC Yemmiganur Yard,Andhra Pradesh,Kurnool,Yemmiganur,Yemmiganur,518360,4500,15.7721,77.4785
+CNTR1029,APSWC Kodumur Depot,Andhra Pradesh,Kurnool,Kodumur,Kodumur,518463,3100,15.6845,77.7854
+CNTR1030,APSWC Dhone Logistics,Andhra Pradesh,Kurnool,Dhone,Dhone,518222,5200,15.4214,77.8765
+CNTR1031,Anantapur City Hub,Andhra Pradesh,Anantapur,Anantapur,Anantapur,515001,3000,14.6819,77.6006
+CNTR1032,Gooty Depot,Andhra Pradesh,Anantapur,Gooty,Gooty,515401,4500,15.1147,77.6412
+CNTR1033,Tadipatri Plant,Andhra Pradesh,Anantapur,Tadipatri,Tadipatri,515411,6200,14.9124,78.0124
+CNTR1034,Rayadurgam Node,Andhra Pradesh,Anantapur,Rayadurgam,Rayadurgam,515865,3400,14.7012,76.8521
+CNTR1035,Guni WH,Andhra Pradesh,Anantapur,Guntakal,Guntakal,515801,5100,15.1672,77.3784
+CNTR1036,Hindupur Industrial WH,Andhra Pradesh,Sri Sathya Sai,Hindupur,Hindupur,515201,5500,13.8246,77.4912
+CNTR1037,Puttaparthi Yard,Andhra Pradesh,Sri Sathya Sai,Puttaparthi,Puttaparthi,515134,3200,14.1672,77.8124
+CNTR1038,Kadiri Procurement,Andhra Pradesh,Sri Sathya Sai,Kadiri,Kadiri,515591,4100,14.1124,78.1624
+CNTR1039,Penukonda Hub,Andhra Pradesh,Sri Sathya Sai,Penukonda,Penukonda,515110,6000,14.0845,77.5951
+CNTR1040,Madakasira Node,Andhra Pradesh,Sri Sathya Sai,Madakasira,Madakasira,515301,2600,13.9362,77.2684
+CNTR1041,Nandyal Mega Depot,Andhra Pradesh,Nandyal,Nandyal,Nandyal,518501,8500,15.4845,78.4878
+CNTR1042,Allagadda Storage,Andhra Pradesh,Nandyal,Allagadda,Allagadda,518543,3800,15.1321,78.5124
+CNTR1043,Dhone Border Depot,Andhra Pradesh,Nandyal,Banaganapalli,Banaganapalli,518124,4300,15.3185,78.1354
+CNTR1044,Atmakur Node,Andhra Pradesh,Nandyal,Atmakur,Atmakur,518422,3100,15.8821,78.5821
+CNTR1045,Nandikotkur Yard,Andhra Pradesh,Nandyal,Nandikotkur,Nandikotkur,518401,4700,15.8562,78.2614
+CNTR1046,APSWC Kadapa Depot,Andhra Pradesh,YSR Kadapa,Kadapa,Kadapa,516001,1000,14.4673,78.8242
+CNTR1047,APSWC Proddatur Center,Andhra Pradesh,YSR Kadapa,Proddatur,Proddatur,516360,4000,14.7521,78.5532
+CNTR1048,Pulivendula Logistics,Andhra Pradesh,YSR Kadapa,Pulivendula,Pulivendula,516390,6800,14.4162,78.2321
+CNTR1049,Jammalamadugu Yard,Andhra Pradesh,YSR Kadapa,Jammalamadugu,Jammalamadugu,516434,4200,14.8362,78.3951
+CNTR1050,Badvel Grain Hub,Andhra Pradesh,YSR Kadapa,Badvel,Badvel,516227,3300,14.7412,79.0545
+CNTR1051,Madanapalle Cold Storage,Andhra Pradesh,Annamayya,Madanapalle,Madanapalle,517325,7200,13.5562,78.5024
+CNTR1052,Rayachoty Warehouse,Andhra Pradesh,Annamayya,Rayachoty,Rayachoty,516267,4500,14.0562,78.7521
+CNTR1053,Rajampet Agri Node,Andhra Pradesh,Annamayya,Rajampet,Rajampet,516115,3900,14.1845,79.1624
+CNTR1054,Railway Kodur Hub,Andhra Pradesh,Annamayya,Railway Kodur,Railway Kodur,516101,5100,13.9512,79.3521
+CNTR1055,Tamballapalle Yard,Andhra Pradesh,Annamayya,Tamballapalle,Tamballapalle,517391,2400,13.8241,78.3614
+CNTR1056,Chittoor Mango Storage,Andhra Pradesh,Chittoor,Chittoor,Chittoor,517001,6100,13.2172,79.1003
+CNTR1057,Palamaner Supply Node,Andhra Pradesh,Chittoor,Palamaner,Palamaner,517408,4300,13.2014,78.7521
+CNTR1058,Kuppam Border Hub,Andhra Pradesh,Chittoor,Kuppam,Kuppam,517425,5500,12.7521,78.3645
+CNTR1059,Nagari Textile Depot,Andhra Pradesh,Chittoor,Nagari,Nagari,517590,3400,13.3214,79.5845
+CNTR1060,Punganur Procurement,Andhra Pradesh,Chittoor,Punganur,Punganur,517247,4000,13.3642,78.5812
+CNTR1061,Renigunta Cargo Mega Hub,Andhra Pradesh,Tirupati,Renigunta,Renigunta,517520,12000,13.6492,79.5124
+CNTR1062,Tirupati Rural Storage,Andhra Pradesh,Tirupati,Tirupati Rural,Tirupati,517501,5000,13.6284,79.4192
+CNTR1063,Srikalahasti Agri Yard,Andhra Pradesh,Tirupati,Srikalahasti,Srikalahasti,517644,4800,13.7498,79.6985
+CNTR1064,Sullurpeta Coastal Node,Andhra Pradesh,Tirupati,Sullurpeta,Sullurpeta,524121,6200,13.7012,80.0195
+CNTR1065,Gudur Processing Unit,Andhra Pradesh,Tirupati,Gudur,Gudur,524101,7100,14.1085,79.8514
+CNTR1066,Nellore Central Complex,Andhra Pradesh,Nellore,Nellore,Nellore,524001,9500,14.4426,79.9865
+CNTR1067,Kavali Port Depot,Andhra Pradesh,Nellore,Kavali,Kavali,524201,5300,14.9124,80.0014
+CNTR1068,Gudur South Terminal,Andhra Pradesh,Nellore,Venkatagiri,Venkatagiri,524132,3600,13.9621,79.5845
+CNTR1069,Atmakur Net WH,Andhra Pradesh,Nellore,Atmakur,Atmakur,524322,2900,14.6412,79.4124
+CNTR1070,Podalakur Terminal,Andhra Pradesh,Nellore,Podalakur,Podalakur,524345,3100,14.3645,79.7321
+CNTR1071,CWC Ongole Main,Andhra Pradesh,Prakasam,Ongole,Ongole,523001,1700,15.5057,80.0499
+CNTR1072,Chirala Border Depot,Andhra Pradesh,Prakasam,Singarayakonda,Singarayakonda,523101,4200,15.2514,80.0351
+CNTR1073,Markapur Industrial WH,Andhra Pradesh,Prakasam,Markapur,Markapur,523316,5100,15.7351,79.2845
+CNTR1074,Kandukur Grain Node,Andhra Pradesh,Prakasam,Kandukur,Kandukur,523105,3800,15.2165,79.9042
+CNTR1075,Podili Center,Andhra Pradesh,Prakasam,Podili,Podili,523240,2900,15.6033,79.6085
+CNTR1076,Eluru Grain Terminal,Andhra Pradesh,Eluru,Eluru,Eluru,534001,8200,16.7114,81.1024
+CNTR1077,Jangareddygudem Node,Andhra Pradesh,Eluru,Jangareddygudem,Jangareddygudem,534343,4500,17.1214,81.2945
+CNTR1078,Chintalapudi Yard,Andhra Pradesh,Eluru,Chintalapudi,Chintalapudi,534460,3700,17.0621,80.9854
+CNTR1079,Nuzvid East Depot,Andhra Pradesh,Eluru,Musunuru,Musunuru,521207,2900,16.9124,80.9654
+CNTR1080,Polavaram Logistics,Andhra Pradesh,Eluru,Polavaram,Polavaram,534315,4100,17.2514,81.6321
+CNTR1081,Bhimavaram Aqua Storage,Andhra Pradesh,West Godavari,Bhimavaram,Bhimavaram,534201,9000,16.5435,81.5214
+CNTR1082,Tadepalligudem Agro WH,Andhra Pradesh,West Godavari,Tadepalligudem,Tadepalligudem,534101,7500,16.8242,81.5285
+CNTR1083,Tanuku Processing Node,Andhra Pradesh,West Godavari,Tanuku,Tanuku,534211,5300,16.7521,81.6845
+CNTR1084,Palakollu Center,Andhra Pradesh,West Godavari,Palakollu,Palakollu,534260,4800,16.5185,81.7321
+CNTR1085,Narasapuram Terminal,Andhra Pradesh,West Godavari,Narasapuram,Narasapuram,534275,6100,16.4362,81.6914
+CNTR1086,CWC Rajahmundry Hub,Andhra Pradesh,East Godavari,Rajahmundry,Rajahmundry,533101,3400,17.0005,81.7835
+CNTR1087,Kovvur Logistics Terminal,Andhra Pradesh,East Godavari,Kovvur,Kovvur,534350,4100,17.0124,81.7245
+CNTR1088,Nidadavole Supply Depot,Andhra Pradesh,East Godavari,Nidadavole,Nidadavole,534301,3800,16.9124,81.6645
+CNTR1089,Anaparthi Grain WH,Andhra Pradesh,East Godavari,Anaparthi,Anaparthi,533342,4900,16.9324,81.9654
+CNTR1090,Razole Delta Depot,Andhra Pradesh,East Godavari,Razole,Razole,533242,3300,16.4812,81.8321
+CNTR1091,Amalapuram Coconut WH,Andhra Pradesh,Konaseema,Amalapuram,Amalapuram,533201,5200,16.5785,82.0124
+CNTR1092,Ravulapalem Market WH,Andhra Pradesh,Konaseema,Ravulapalem,Ravulapalem,533238,6400,16.7521,81.8542
+CNTR1093,Kothapeta Agro Node,Andhra Pradesh,Konaseema,Kothapeta,Kothapeta,533223,3100,16.7115,81.9321
+CNTR1094,Mummidivaram Complex,Andhra Pradesh,Konaseema,Mummidivaram,Mummidivaram,533216,2900,16.6412,82.1354
+CNTR1095,Ramachandrapuram Depot,Andhra Pradesh,Konaseema,Ramachandrapuram,Ramachandrapuram,533255,4700,16.8485,82.0254
+CNTR1096,Kakinada Port Mega Complex,Andhra Pradesh,Kakinada,Kakinada,Kakinada,533001,15000,16.9894,82.2475
+CNTR1097,APSWC Karapa Regional Hub,Andhra Pradesh,Kakinada,Karapa,Karapa,533008,8000,16.8912,82.2124
+CNTR1098,Peddapuram Industrial Node,Andhra Pradesh,Kakinada,Peddapuram,Peddapuram,533437,5800,17.0321,82.1645
+CNTR1099,Pithapuram Storage,Andhra Pradesh,Kakinada,Pithapuram,Pithapuram,533450,4100,17.1124,82.2562
+CNTR1100,Tuni Regional Depot,Andhra Pradesh,Kakinada,Tuni,Tuni,533401,6200,17.3562,82.5514
+CNTR1101,Paderu Tribal Procurement,Andhra Pradesh,Alluri Sitharama Raju,Paderu,Paderu,531024,2500,18.0824,82.6612
+CNTR1102,Araku Valley Cold Hub,Andhra Pradesh,Alluri Sitharama Raju,Araku Valley,Araku Valley,531151,3100,18.3245,82.8854
+CNTR1103,Chinturu Forest Terminal,Andhra Pradesh,Alluri Sitharama Raju,Chinturu,Chinturu,507129,2200,17.7845,81.3951
+CNTR1104,Rampachodavaram Node,Andhra Pradesh,Alluri Sitharama Raju,Rampachodavaram,Rampachodavaram,533288,2700,17.4521,81.7854
+CNTR1105,Ananthagiri Storage,Andhra Pradesh,Alluri Sitharama Raju,Ananthagiri,Ananthagiri,531145,2100,18.2145,83.0124
+CNTR1106,CW Anakapalli Depot,Andhra Pradesh,Anakapalli,Anakapalli,Anakapalli,531001,1700,17.6895,83.0024
+CNTR1107,Chodavaram Sugar Terminal,Andhra Pradesh,Anakapalli,Chodavaram,Chodavaram,531036,5200,17.8345,82.9321
+CNTR1108,Narsipatnam Agro WH,Andhra Pradesh,Anakapalli,Narsipatnam,Narsipatnam,531116,4100,17.6712,82.6124
+CNTR1109,Elamanchili Coastal Yard,Andhra Pradesh,Anakapalli,Elamanchili,Elamanchili,531055,3600,17.5514,82.8542
+CNTR1110,Payakaraopeta Node,Andhra Pradesh,Anakapalli,Payakaraopeta,Payakaraopeta,531126,3300,17.3695,82.5845
+CNTR1111,Vizag Port Logistics Base,Andhra Pradesh,Visakhapatnam,Gajuwaka,Gajuwaka,530026,14000,17.6892,83.2085
+CNTR1112,Marripalem Cargo Vault,Andhra Pradesh,Visakhapatnam,Gopalapatnam,Marripalem,530018,8500,17.7495,83.2514
+CNTR1113,Pendurthi Agro Storage,Andhra Pradesh,Visakhapatnam,Pendurthi,Pendurthi,531173,4900,17.8124,83.2012
+CNTR1114,Bheemunipatnam Terminal,Andhra Pradesh,Visakhapatnam,Bheemunipatnam,Bheemunipatnam,531163,4200,17.8924,83.4452
+CNTR1115,Rushikonda Core Depot,Andhra Pradesh,Visakhapatnam,Visakhapatnam Rural,Rushikonda,530045,5000,17.7815,83.3854
+CNTR1116,Vizianagaram Industrial Base,Andhra Pradesh,Vizianagaram,Vizianagaram,Vizianagaram,535001,7200,18.1124,83.4012
+CNTR1117,Gajapathinagaram Depot,Andhra Pradesh,Vizianagaram,Gajapathinagaram,Gajapathinagaram,535270,3900,18.2845,83.3412
+CNTR1118,Cheepurupalli Node,Andhra Pradesh,Vizianagaram,Cheepurupalli,Cheepurupalli,535128,4600,18.3124,83.5654
+CNTR1119,Bhogapuram Supply Hub,Andhra Pradesh,Vizianagaram,Bhogapuram,Bhogapuram,535216,5100,18.0124,83.5012
+CNTR1120,Srungavarapukota WH,Andhra Pradesh,Vizianagaram,Srungavarapukota,Srungavarapukota,535145,3400,18.1165,83.1452
+CNTR1121,Parvathipuram Central WH,Andhra Pradesh,Parvathipuram Manyam,Parvathipuram,Parvathipuram,535501,4800,18.7824,83.4245
+CNTR1122,Bobbili Growth Terminal,Andhra Pradesh,Parvathipuram Manyam,Bobbili,Bobbili,535558,6700,18.5662,83.3645
+CNTR1123,Salur Tribal Depot,Andhra Pradesh,Parvathipuram Manyam,Salur,Salur,535591,3300,18.5214,83.2124
+CNTR1124,Palakonda Processing Node,Andhra Pradesh,Parvathipuram Manyam,Palakonda,Palakonda,532440,3900,18.6012,83.7542
+CNTR1125,Kurupam Forest Vault,Andhra Pradesh,Parvathipuram Manyam,Kurupam,Kurupam,535524,2200,18.8645,83.5854
+CNTR1126,Srikakulam Urban Complex,Andhra Pradesh,Srikakulam,Srikakulam,Srikakulam,532001,6800,18.3012,83.8951
+CNTR1127,Tekkali Procurement Hub,Andhra Pradesh,Srikakulam,Tekkali,Tekkali,532201,4200,18.6124,84.2321
+CNTR1128,Palasa Cashew Terminal,Andhra Pradesh,Srikakulam,Palasa,Palasa,532221,5900,18.7725,84.4162
+CNTR1129,Sompeta Coastal Node,Andhra Pradesh,Srikakulam,Sompeta,Sompeta,532404,3100,18.9321,84.5951
+CNTR1130,Amadalavalasa Rail Depot,Andhra Pradesh,Srikakulam,Amadalavalasa,Amadalavalasa,532185,4600,18.2914,83.8642

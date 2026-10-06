@@ -1139,7 +1139,10 @@ const styles = {
     boxSizing: "border-box",
     borderRadius: "11px",
     border: "1px solid #d5e1da",
-    background: "#fbfdfb",
+    background: "#ffffff",
+    color: "#1f2937",
+    colorScheme: "light",
+    fontSize: "14px",
     outline: "none",
   },
 

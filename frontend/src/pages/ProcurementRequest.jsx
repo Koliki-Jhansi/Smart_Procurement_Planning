@@ -1,19 +1,75 @@
 import React, { useState } from "react";
+import { API_BASE_URL as API } from "../apiConfig";
 
 function ProcurementRequest({
   user,
   selectedCenter,
   selectedCrop,
+  transportData,
   goBack,
   onRequestSent
 }) {
-  const [quantity, setQuantity] = useState("");
-  const [vehicle, setVehicle] = useState("Medium Truck");
-  const [transportCost, setTransportCost] = useState("");
+  const savedPrediction = (() => {
+    try {
+      const raw = sessionStorage.getItem("latestCropPrediction");
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  })();
+
+  const cropName =
+    typeof selectedCrop === "string" && selectedCrop.trim() !== ""
+      ? selectedCrop
+      : typeof selectedCrop === "object" && selectedCrop !== null
+      ? selectedCrop.crop || selectedCrop.crop_name || selectedCrop.name || selectedCrop.selectedCrop || ""
+      : savedPrediction?.crop ||
+        savedPrediction?.crop_name ||
+        user?.primary_crop ||
+        user?.crop ||
+        selectedCenter?.crop ||
+        "";
+
+  const initialQuantity = (() => {
+    const raw =
+      transportData?.quantity ??
+      transportData?.production ??
+      transportData?.estimated_production ??
+      (typeof selectedCrop === "object" && selectedCrop !== null
+        ? selectedCrop.estimated_production ??
+          selectedCrop.estimatedProduction ??
+          selectedCrop.predicted_production ??
+          selectedCrop.predictedProduction ??
+          selectedCrop.production ??
+          selectedCrop.quantity
+        : null) ??
+      savedPrediction?.estimated_production ??
+      savedPrediction?.estimatedProduction ??
+      savedPrediction?.predicted_production ??
+      savedPrediction?.predictedProduction ??
+      savedPrediction?.production ??
+      "";
+    return raw !== null && raw !== undefined ? String(raw) : "";
+  })();
+
+  const initialTransportCost = (() => {
+    const raw =
+      transportData?.totalCost ??
+      transportData?.total_cost ??
+      transportData?.transport_cost ??
+      "";
+    return raw !== null && raw !== undefined ? String(raw) : "";
+  })();
+
+  const [quantity, setQuantity] = useState(initialQuantity);
+  const [vehicle, setVehicle] = useState(transportData?.vehicle || transportData?.vehicleType || "Medium Truck");
+  const [transportCost, setTransportCost] = useState(initialTransportCost);
 
   const [distanceKm] = useState(
-    selectedCenter?.distance_km ||
-      selectedCenter?.distance ||
+    transportData?.oneWayDistance ??
+      transportData?.distance ??
+      selectedCenter?.distance_km ??
+      selectedCenter?.distance ??
       0
   );
 
@@ -35,8 +91,10 @@ function ProcurementRequest({
   const farmerId =
     user?.id ||
     user?.user_id ||
+    user?.userId ||
     user?.farmer_id ||
-    1234;
+    user?.farmerId ||
+    "";
 
   const mobileNumber =
     user?.mobile_number ||
@@ -47,6 +105,7 @@ function ProcurementRequest({
   const district =
     user?.district ||
     user?.District ||
+    selectedCenter?.district ||
     "";
 
   // =====================================================
@@ -56,29 +115,32 @@ function ProcurementRequest({
   const centerId =
     selectedCenter?.center_id ||
     selectedCenter?.id ||
+    selectedCenter?.Center_ID ||
     "";
 
   const centerName =
     selectedCenter?.center_name ||
     selectedCenter?.name ||
+    selectedCenter?.Procurement_Center_Name ||
     "Procurement Center";
 
   const centerDistrict =
     selectedCenter?.district ||
     selectedCenter?.center_district ||
+    selectedCenter?.District ||
     district ||
     "";
 
   const centerLocation =
     selectedCenter?.location ||
     selectedCenter?.center_location ||
+    selectedCenter?.Location ||
+    selectedCenter?.address ||
+    selectedCenter?.mandal ||
     selectedCenter?.village ||
     "-";
 
-  const crop =
-    selectedCrop ||
-    selectedCenter?.crop ||
-    "";
+  const crop = cropName;
 
   const totalCapacity =
     selectedCenter?.total_capacity ??
@@ -101,7 +163,9 @@ function ProcurementRequest({
     setError("");
     setSuccess("");
 
-    if (!selectedCenter) {
+    console.log("Send Request clicked");
+
+    if (!selectedCenter || !centerId) {
       setError(
         "Please select a procurement center first."
       );
@@ -126,62 +190,54 @@ function ProcurementRequest({
       return;
     }
 
-    const numericDistance =
-      Number(distanceKm) || 0;
-
-    const numericTransportCost =
-      Number(transportCost) || 0;
+    const numericFarmerId = Number(farmerId) || farmerId;
+    const numericDistance = Number(distanceKm) || 0;
+    const numericTransportCost = Number(transportCost) || 0;
 
     const payload = {
-      farmer_id: farmerId,
-      farmer_name: farmerName,
-      mobile_number: mobileNumber,
-      district: district,
+      farmer_id: numericFarmerId,
+      farmer_name: String(farmerName || ""),
+      mobile_number: String(mobileNumber || ""),
+      district: String(district || ""),
 
-      crop: crop,
+      crop: String(crop || ""),
       quantity: numericQuantity,
 
       center_id: String(centerId),
-      center_name: centerName,
-      center_district: centerDistrict,
-      center_location: centerLocation,
+      center_name: String(centerName || ""),
+      center_district: String(centerDistrict || ""),
+      center_location: String(centerLocation || ""),
 
       distance_km: numericDistance,
-      vehicle: vehicle,
+      vehicle: String(vehicle || "Medium Truck"),
 
       transport_cost: numericTransportCost,
       total_cost: numericTransportCost
     };
 
+    console.log("Request payload:", payload);
+
     setLoading(true);
 
     try {
       const response = await fetch(
-        "http://127.0.0.1:5000/api/procurement-requests",
+        `${API}/api/procurement-requests`,
         {
           method: "POST",
-
           headers: {
             "Content-Type": "application/json"
           },
-
           body: JSON.stringify(payload)
         }
       );
 
       const result = await response.json();
+      console.log("Request response:", result);
 
-      if (!response.ok) {
+      if (!response.ok || result?.success === false) {
         setError(
           result?.message ||
-            "Unable to send procurement request."
-        );
-        return;
-      }
-
-      if (result?.success !== true) {
-        setError(
-          result?.message ||
+            result?.error ||
             "Unable to send procurement request."
         );
         return;
@@ -198,28 +254,24 @@ function ProcurementRequest({
           status: "pending"
         };
 
-      const requestStatus =
-        requestData?.status || "pending";
-
       setTimeout(() => {
         if (
           typeof onRequestSent === "function"
         ) {
           onRequestSent(
-            requestStatus,
             requestData
           );
         }
       }, 500);
     } catch (requestError) {
       console.error(
-        "Procurement Request Error:",
+        "Request submission error:",
         requestError
       );
 
       setError(
         requestError?.message ||
-          "Unable to send procurement request."
+          "Unable to send procurement request. Please verify connection to backend."
       );
     } finally {
       setLoading(false);
@@ -755,6 +807,7 @@ const styles = {
     outline: "none",
     background: "#ffffff",
     color: "#244a36",
+    colorScheme: "light",
     fontSize: "16px"
   },
 
@@ -768,6 +821,7 @@ const styles = {
     outline: "none",
     background: "#f4f8f5",
     color: "#355844",
+    colorScheme: "light",
     fontSize: "16px",
     fontWeight: "700"
   },

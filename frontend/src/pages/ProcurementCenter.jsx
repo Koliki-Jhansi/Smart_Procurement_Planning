@@ -319,21 +319,8 @@ if (!cleanDistrict) {
 
 
 // -------------------------------------------------
-// VALIDATE CROP
+// VALIDATE CROP (OPTIONAL FOR DISPLAYING CENTERS)
 // -------------------------------------------------
-
-if (!cleanCrop) {
-
-  setError(
-    "Crop information is missing. Please select or predict a crop first."
-  );
-
-  setCenters([]);
-
-  return;
-
-}
-
 
 setLoading(true);
 
@@ -540,8 +527,7 @@ try {
 useEffect(() => {
 
 if (
-  farmerDistrict &&
-  farmerCrop
+  farmerDistrict
 ) {
 
   loadCenters(
@@ -1915,6 +1901,15 @@ outline:
 
 boxSizing:
   "border-box",
+
+background:
+  "#ffffff",
+
+color:
+  "#1f2937",
+
+colorScheme:
+  "light",
 
 },
 
