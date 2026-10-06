@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import axios from "axios";
-
-const API = "http://127.0.0.1:5000";
+import { API_BASE_URL as API } from "../apiConfig";
 
 function WarehousePrediction({ goBack }) {
   const [districts, setDistricts] = useState([]);
@@ -598,6 +597,7 @@ const styles = {
     outline: "none",
     background: "transparent",
     color: "#263c32",
+    colorScheme: "light",
     fontSize: "14px",
   },
 

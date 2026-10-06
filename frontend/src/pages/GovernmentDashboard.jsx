@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import WarehousePrediction from "./WarehousePrediction";
-
-const API = "http://127.0.0.1:5000";
+import { API_BASE_URL as API } from "../apiConfig";
 
 function GovernmentDashboard({ user, onLogout }) {
   const [activeSection, setActiveSection] = useState("overview");
@@ -20,6 +19,14 @@ function GovernmentDashboard({ user, onLogout }) {
   const [loadingCrop, setLoadingCrop] = useState(false);
   const [loadingWarehouse, setLoadingWarehouse] = useState(false);
   const [loadingRequests, setLoadingRequests] = useState(false);
+  const [uiMessage, setUiMessage] = useState("");
+  const [requestFilter, setRequestFilter] = useState("pending");
+
+  // Existing alert(...) calls are intentionally routed to an inline page
+  // message so this dashboard never opens browser popup dialogs.
+  const alert = (message) => {
+    setUiMessage(String(message || ""));
+  };
 
   const [cropForm, setCropForm] = useState({
     district: user?.district || "",
@@ -510,9 +517,46 @@ function GovernmentDashboard({ user, onLogout }) {
     (request) => request.status === "rejected"
   ).length;
 
-  const currentRequests = requests.filter(
-    (request) => String(request?.status || "").toLowerCase() === "pending"
-  );
+  const completed = requests.filter(
+    (request) => request.status === "completed"
+  ).length;
+
+  const suggested = requests.filter(
+    (request) =>
+      request.status === "suggested" ||
+      request.status === "suggested_center" ||
+      request.status === "center_suggested"
+  ).length;
+
+  const currentRequests = requests.filter((request) => {
+    const status = String(request?.status || "").toLowerCase();
+
+    if (requestFilter === "pending") {
+      return status === "pending";
+    }
+
+    if (requestFilter === "accepted") {
+      return status === "accepted" || status === "approved";
+    }
+
+    if (requestFilter === "rejected") {
+      return status === "rejected";
+    }
+
+    if (requestFilter === "completed") {
+      return status === "completed";
+    }
+
+    if (requestFilter === "suggested") {
+      return (
+        status === "suggested" ||
+        status === "suggested_center" ||
+        status === "center_suggested"
+      );
+    }
+
+    return true;
+  });
 
   const renderOverview = () => (
     <div>
@@ -884,10 +928,47 @@ function GovernmentDashboard({ user, onLogout }) {
           </div>
         )}
 
+        <div
+          style={{
+            display: "flex",
+            gap: "8px",
+            flexWrap: "wrap",
+            margin: "26px 0 10px"
+          }}
+        >
+          {[
+            ["pending", `Pending (${pending})`],
+            ["accepted", `Accepted / Approved (${accepted})`],
+            ["rejected", `Rejected (${rejected})`],
+            ["completed", `Completed (${completed})`],
+            ["suggested", `Suggested Centers (${suggested})`]
+          ].map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setRequestFilter(value)}
+              style={{
+                ...styles.secondaryButton,
+                background:
+                  requestFilter === value ? "#174b36" : "#ffffff",
+                color:
+                  requestFilter === value ? "#ffffff" : "#174b36",
+                fontWeight: requestFilter === value ? 800 : 600
+              }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
         <div style={styles.requestSectionTitle}>
           <div>
-            <span style={styles.heroEyebrow}>ACTION REQUIRED</span>
-            <h2 style={{ margin: "5px 0 0" }}>Current Requests</h2>
+            <span style={styles.heroEyebrow}>REQUESTS</span>
+            <h2 style={{ margin: "5px 0 0" }}>
+              {requestFilter === "suggested"
+                ? "Suggested Centers"
+                : `${requestFilter.charAt(0).toUpperCase()}${requestFilter.slice(1)} Requests`}
+            </h2>
           </div>
           <span style={styles.countBadge}>{currentRequests.length}</span>
         </div>
@@ -896,7 +977,7 @@ function GovernmentDashboard({ user, onLogout }) {
           <p>Loading requests...</p>
         ) : currentRequests.length === 0 ? (
           <div style={styles.infoCard}>
-            No pending procurement requests.
+            No {requestFilter === "suggested" ? "suggested center" : requestFilter} procurement requests.
           </div>
         ) : (
           <div style={styles.requestGrid}>
@@ -920,92 +1001,105 @@ function GovernmentDashboard({ user, onLogout }) {
                   key={requestItem.id}
                   style={styles.requestCard}
                 >
-                  <h3>{requestItem.crop}</h3>
-
-                  <p>
-                    <b>Farmer:</b>{" "}
-                    {requestItem.farmer_name || "-"}
-                  </p>
-
-                  <p>
-                    <b>Farmer ID:</b>{" "}
-                    {requestItem.farmer_id || "-"}
-                  </p>
-
-                  <p>
-                    <b>Mobile:</b>{" "}
-                    {requestItem.mobile_number || "-"}
-                  </p>
-
-                  <p>
-                    <b>Center:</b>{" "}
-                    {centerName}
-                  </p>
-
-                  <p>
-                    <b>District:</b>{" "}
-                    {requestItem.district || "-"}
-                  </p>
-
-                  <p>
-                    <b>Quantity:</b>{" "}
-                    {requestItem.quantity} tons
-                  </p>
-
-                  <p>
-                    <b>Status:</b>{" "}
-                    <span
-                      style={statusStyle(
-                        requestItem.status
-                      )}
-                    >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px" }}>
+                    <h3 style={{ margin: 0, color: "#173e2e", fontSize: "19px" }}>🌾 {requestItem.crop}</h3>
+                    <span style={statusStyle(requestItem.status)}>
                       {requestItem.status}
                     </span>
-                  </p>
+                  </div>
+
+                  <div style={styles.requestDetailsGrid}>
+                    <div style={styles.requestDetailItem}>
+                      <span style={styles.requestDetailLabel}>Farmer</span>
+                      <strong style={styles.requestDetailValue}>{requestItem.farmer_name || "-"}</strong>
+                    </div>
+
+                    <div style={styles.requestDetailItem}>
+                      <span style={styles.requestDetailLabel}>Farmer ID</span>
+                      <strong style={styles.requestDetailValue}>{requestItem.farmer_id || "-"}</strong>
+                    </div>
+
+                    <div style={styles.requestDetailItem}>
+                      <span style={styles.requestDetailLabel}>Mobile</span>
+                      <strong style={styles.requestDetailValue}>{requestItem.mobile_number || "-"}</strong>
+                    </div>
+
+                    <div style={styles.requestDetailItem}>
+                      <span style={styles.requestDetailLabel}>District</span>
+                      <strong style={styles.requestDetailValue}>{requestItem.district || requestItem.center_district || "-"}</strong>
+                    </div>
+
+                    <div style={styles.requestDetailItem}>
+                      <span style={styles.requestDetailLabel}>Procurement Center</span>
+                      <strong style={styles.requestDetailValue}>
+                        {centerName} {requestItem.center_id ? `(${requestItem.center_id})` : ""}
+                      </strong>
+                    </div>
+
+                    <div style={styles.requestDetailItem}>
+                      <span style={styles.requestDetailLabel}>Center Location</span>
+                      <strong style={styles.requestDetailValue}>{requestItem.center_location || requestItem.location || "-"}</strong>
+                    </div>
+
+                    <div style={styles.requestDetailItem}>
+                      <span style={styles.requestDetailLabel}>Quantity</span>
+                      <strong style={{ ...styles.requestDetailValue, color: "#15803d" }}>
+                        {requestItem.quantity} tons
+                      </strong>
+                    </div>
+
+                    <div style={styles.requestDetailItem}>
+                      <span style={styles.requestDetailLabel}>Distance</span>
+                      <strong style={styles.requestDetailValue}>
+                        {requestItem.distance_km != null
+                          ? `${Number(requestItem.distance_km).toFixed(2)} KM`
+                          : (requestItem.distance != null ? `${Number(requestItem.distance).toFixed(2)} KM` : "-")}
+                      </strong>
+                    </div>
+
+                    <div style={styles.requestDetailItem}>
+                      <span style={styles.requestDetailLabel}>Vehicle</span>
+                      <strong style={styles.requestDetailValue}>{requestItem.vehicle || "-"}</strong>
+                    </div>
+
+                    <div style={styles.requestDetailItem}>
+                      <span style={styles.requestDetailLabel}>Transport Cost</span>
+                      <strong style={styles.requestDetailValue}>
+                        {requestItem.transport_cost != null && requestItem.transport_cost > 0
+                          ? `₹${Number(requestItem.transport_cost).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                          : (requestItem.total_cost != null && requestItem.total_cost > 0
+                              ? `₹${Number(requestItem.total_cost).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                              : "-")}
+                      </strong>
+                    </div>
+
+                    <div style={{ ...styles.requestDetailItem, gridColumn: "1 / -1" }}>
+                      <span style={styles.requestDetailLabel}>Submitted On</span>
+                      <strong style={styles.requestDetailValue}>
+                        {requestItem.created_at_display ||
+                          (requestItem.created_at
+                            ? new Date(requestItem.created_at).toLocaleString("en-IN")
+                            : "-")}
+                      </strong>
+                    </div>
+                  </div>
 
                   {appointment && (
-                    <div
-                      style={styles.appointmentBox}
-                    >
-                      <b>
-                        📅 Appointment
-                      </b>
-
-                      <p>
-                        Date:{" "}
-                        {appointment.appointment_date}
-                      </p>
-
-                      <p>
-                        Time:{" "}
-                        {appointment.appointment_time}
-                      </p>
-
-                      <p>
-                        Reserved:{" "}
-                        {appointment.reserved_quantity} tons
-                      </p>
-
-                      <p>
-                        Appointment Status:{" "}
-                        {appointment.status}
-                      </p>
+                    <div style={styles.appointmentBox}>
+                      <b style={{ color: "#1e40af" }}>📅 Booked Appointment</b>
+                      <p style={{ margin: "4px 0" }}>Date: <b>{appointment.appointment_date}</b> | Time: <b>{appointment.appointment_time}</b></p>
+                      <p style={{ margin: "4px 0" }}>Reserved: <b>{appointment.reserved_quantity} tons</b></p>
+                      <p style={{ margin: "4px 0" }}>Appointment Status: <b>{appointment.status}</b></p>
                     </div>
                   )}
 
-                  {requestItem.status ===
-                    "pending" && (
+                  {requestItem.status === "pending" && (
                     <>
-                      <div
-                        style={
-                          styles.appointmentInputRow
-                        }
-                      >
+                      <div style={styles.appointmentInputRow}>
                         <div>
-                          <label>
+                          <label style={styles.fieldLabel}>
                             Appointment Date
                           </label>
-
                           <input
                             style={styles.input}
                             type="date"
@@ -1032,10 +1126,9 @@ function GovernmentDashboard({ user, onLogout }) {
                         </div>
 
                         <div>
-                          <label>
+                          <label style={styles.fieldLabel}>
                             Appointment Time
                           </label>
-
                           <input
                             style={styles.input}
                             type="time"
@@ -1064,9 +1157,7 @@ function GovernmentDashboard({ user, onLogout }) {
 
                       <div style={styles.buttonRow}>
                         <button
-                          style={
-                            styles.approveButton
-                          }
+                          style={styles.approveButton}
                           onClick={() =>
                             updateRequestStatus(
                               requestItem.id,
@@ -1084,9 +1175,7 @@ function GovernmentDashboard({ user, onLogout }) {
                         </button>
 
                         <button
-                          style={
-                            styles.rejectButton
-                          }
+                          style={styles.rejectButton}
                           onClick={() =>
                             updateRequestStatus(
                               requestItem.id,
@@ -1098,9 +1187,7 @@ function GovernmentDashboard({ user, onLogout }) {
                         </button>
 
                         <button
-                          style={
-                            styles.secondaryButton
-                          }
+                          style={styles.secondaryButton}
                           onClick={() =>
                             findAlternativeCenter(
                               requestItem
@@ -1316,6 +1403,39 @@ function GovernmentDashboard({ user, onLogout }) {
         </header>
 
         <div style={styles.content}>
+          {uiMessage && (
+            <div
+              style={{
+                marginBottom: "14px",
+                padding: "12px 14px",
+                border: "1px solid #cfe0d5",
+                borderRadius: "10px",
+                background: "#f2f8f4",
+                color: "#245c42",
+                fontSize: "12px",
+                fontWeight: 700,
+                display: "flex",
+                justifyContent: "space-between",
+                gap: "12px",
+                alignItems: "center"
+              }}
+            >
+              <span style={{ whiteSpace: "pre-line" }}>{uiMessage}</span>
+              <button
+                type="button"
+                onClick={() => setUiMessage("")}
+                style={{
+                  border: 0,
+                  background: "transparent",
+                  color: "#245c42",
+                  cursor: "pointer",
+                  fontWeight: 900
+                }}
+              >
+                ×
+              </button>
+            </div>
+          )}
           {activeSection === "overview" && renderOverview()}
           {activeSection === "crop" && renderCropProduction()}
           {activeSection === "warehouse" && renderWarehouse()}
@@ -1339,29 +1459,58 @@ function ResultFact({ label, value }) {
 }
 
 function statusStyle(status) {
+  const s = String(status || "").toLowerCase();
   if (
-    status === "accepted" ||
-    status === "approved"
+    s === "accepted" ||
+    s === "approved"
   ) {
     return {
+      padding: "5px 12px",
+      borderRadius: "12px",
+      background: "#e8f7ee",
       color: "#15803d",
       fontWeight: "bold",
-      textTransform: "capitalize"
+      fontSize: "12px",
+      textTransform: "capitalize",
+      display: "inline-block"
     };
   }
 
-  if (status === "rejected") {
+  if (s === "rejected") {
     return {
+      padding: "5px 12px",
+      borderRadius: "12px",
+      background: "#fef2f2",
       color: "#dc2626",
       fontWeight: "bold",
-      textTransform: "capitalize"
+      fontSize: "12px",
+      textTransform: "capitalize",
+      display: "inline-block"
+    };
+  }
+
+  if (s === "completed") {
+    return {
+      padding: "5px 12px",
+      borderRadius: "12px",
+      background: "#eff6ff",
+      color: "#1d4ed8",
+      fontWeight: "bold",
+      fontSize: "12px",
+      textTransform: "capitalize",
+      display: "inline-block"
     };
   }
 
   return {
-    color: "#d97706",
+    padding: "5px 12px",
+    borderRadius: "12px",
+    background: "#fffbeb",
+    color: "#b45309",
     fontWeight: "bold",
-    textTransform: "capitalize"
+    fontSize: "12px",
+    textTransform: "capitalize",
+    display: "inline-block"
   };
 }
 
@@ -1474,8 +1623,13 @@ const styles = {
   input: {
     padding: "12px",
     border: "1px solid #d1d5db",
-    borderRadius: "7px",
-    fontSize: "15px"
+    borderRadius: "8px",
+    fontSize: "14px",
+    background: "#ffffff",
+    color: "#1f2937",
+    colorScheme: "light",
+    outline: "none",
+    boxSizing: "border-box"
   },
 
   primaryButton: {
@@ -1505,7 +1659,8 @@ const styles = {
     borderRadius: "7px",
     background: "#15803d",
     color: "white",
-    cursor: "pointer"
+    cursor: "pointer",
+    fontWeight: "bold"
   },
 
   rejectButton: {
@@ -1514,16 +1669,19 @@ const styles = {
     borderRadius: "7px",
     background: "#dc2626",
     color: "white",
-    cursor: "pointer"
+    cursor: "pointer",
+    fontWeight: "bold"
   },
 
   backButton: {
     marginBottom: "20px",
     padding: "9px 15px",
-    border: "none",
+    border: "1px solid #d1d5db",
     borderRadius: "7px",
-    background: "#e5e7eb",
-    cursor: "pointer"
+    background: "#ffffff",
+    color: "#1f2937",
+    cursor: "pointer",
+    fontWeight: "bold"
   },
 
   resultCard: {
@@ -1591,10 +1749,44 @@ const styles = {
 
   requestCard: {
     marginTop: "15px",
-    padding: "20px",
-    border: "1px solid #ddd",
-    borderRadius: "10px",
-    background: "#fafafa"
+    padding: "22px",
+    border: "1px solid #dce8e0",
+    borderRadius: "14px",
+    background: "#ffffff",
+    boxShadow: "0 4px 15px rgba(20, 60, 40, 0.05)",
+    boxSizing: "border-box"
+  },
+
+  requestDetailsGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+    gap: "12px",
+    margin: "14px 0",
+    padding: "14px",
+    background: "#f9fafb",
+    border: "1px solid #f3f4f6",
+    borderRadius: "10px"
+  },
+
+  requestDetailItem: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "3px"
+  },
+
+  requestDetailLabel: {
+    fontSize: "11px",
+    fontWeight: 700,
+    color: "#6b7280",
+    textTransform: "uppercase",
+    letterSpacing: "0.5px"
+  },
+
+  requestDetailValue: {
+    fontSize: "13px",
+    fontWeight: 700,
+    color: "#1f2937",
+    overflowWrap: "anywhere"
   },
 
   buttonRow: {
