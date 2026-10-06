@@ -157,8 +157,7 @@ app.register_blueprint(
 
 
 app.register_blueprint(
-    transport_bp,
-    url_prefix="/api/transport"
+    transport_bp
 )
 
 

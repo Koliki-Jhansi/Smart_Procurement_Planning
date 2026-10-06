@@ -275,7 +275,7 @@ function Register({ goLogin }) {
         );
       } else {
         setError(
-          "Unable to connect to server. Please make sure Flask is running."
+          "Unable to connect to the registration service. Please check your connection or try again later."
         );
       }
     } finally {

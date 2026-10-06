@@ -35,12 +35,9 @@ BASE_DIR = os.path.dirname(
     )
 )
 
-MODEL_DIR = os.path.abspath(
-    os.path.join(
-        BASE_DIR,
-        "..",
-        "models"
-    )
+MODEL_DIR = os.path.join(
+    BASE_DIR,
+    "models"
 )
 
 

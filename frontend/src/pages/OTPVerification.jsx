@@ -60,7 +60,7 @@ function OTPVerification({ goLogin, onVerified }) {
         );
       } else {
         setError(
-          "Unable to connect to the server. Please make sure the backend is running."
+          "Unable to connect to the verification service. Please check your connection or try again later."
         );
       }
 
@@ -116,7 +116,7 @@ function OTPVerification({ goLogin, onVerified }) {
         );
       } else {
         setError(
-          "Unable to connect to the server. Please make sure the backend is running."
+          "Unable to connect to the verification service. Please check your connection or try again later."
         );
       }
 

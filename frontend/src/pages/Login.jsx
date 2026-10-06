@@ -57,7 +57,7 @@ function Login({ onLogin, goRegister }) {
         );
       } else {
         setError(
-          "Unable to connect to server. Please make sure the backend is running."
+          "Unable to connect to the authentication service. Please check your connection or try again later."
         );
       }
     } finally {

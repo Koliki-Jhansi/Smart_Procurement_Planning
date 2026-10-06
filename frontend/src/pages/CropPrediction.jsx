@@ -196,7 +196,7 @@ function CropPrediction({ user, goBack, onCropSelected }) {
         );
 
         setError(
-          "Unable to connect to Flask server. Please make sure the backend server is running."
+          "Unable to contact the prediction service. Please verify your connection or try again later."
         );
       }
 

@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-
-const API = "http://127.0.0.1:5000";
+import { API_BASE_URL as API } from "../apiConfig";
 
 function ProcurementPlanning({
   user,
@@ -117,7 +116,7 @@ function ProcurementPlanning({
           );
         } else if (err.request) {
           setError(
-            "Unable to connect to the backend. Please make sure Flask is running on port 5000."
+            "Unable to load procurement centers. Please check your connection or try again later."
           );
         } else {
           setError(

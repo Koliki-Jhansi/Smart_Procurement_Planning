@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-
-const API = "http://127.0.0.1:5000";
+import { API_BASE_URL as API } from "../apiConfig";
 
 function TransportCost({
   user,
@@ -35,18 +34,6 @@ function TransportCost({
     useState("");
 
   const [result, setResult] = useState(null);
-
-  // Always derive the displayed cost-per-ton from the CURRENT transport
-  // quantity and the returned total cost. This keeps the summary and the
-  // quantity field synchronized without hardcoding any prediction value.
-  const displayedCostPerTon = (() => {
-    const q = Number(quantity);
-    const total = Number(result?.totalCost);
-    if (!result || !Number.isFinite(q) || q <= 0 || !Number.isFinite(total)) {
-      return 0;
-    }
-    return total / q;
-  })();
 
   // =====================================================
   // NORMALIZE SELECTED CENTER
@@ -519,7 +506,7 @@ function TransportCost({
         );
       } else if (err.request) {
         setError(
-          "Unable to connect to the backend. Please make sure Flask is running on port 5000."
+          "Unable to connect to the transportation service. Please check your connection or try again later."
         );
       } else {
         setError(
@@ -944,7 +931,7 @@ function TransportCost({
         );
       } else if (err.request) {
         setError(
-          "Unable to connect to the backend. Please make sure Flask is running on port 5000."
+          "Unable to connect to the procurement service. Please check your connection or try again later."
         );
       } else {
         setError(
@@ -1013,7 +1000,7 @@ function TransportCost({
             <p style={styles.sectionText}>Review the shipment values and calculate the estimated transportation cost.</p>
 
             <div style={styles.fieldBlock}>
-              <label style={styles.label}>Quantity (Tons)</label>
+              <label style={styles.label}>Production (Tons)</label>
               <input type="number" min="0" step="0.01" value={quantity}
                 onChange={(e) => { setQuantityManuallyEdited(true); setQuantity(e.target.value); setResult(null); setSuccessMessage(""); }} style={styles.input} />
               <div style={styles.helperText}>Predicted production: {Number.isFinite(predictedQuantity) && predictedQuantity > 0 ? `${predictedQuantity.toFixed(2)} tons` : "not available"}. Quantity is editable.</div>
@@ -1027,12 +1014,7 @@ function TransportCost({
             </div>
 
             <div style={styles.fieldBlock}>
-              <label style={styles.label}>Vehicle Type</label>
-              <select value={vehicleType} onChange={(e) => { setVehicleType(e.target.value); setResult(null); setSuccessMessage(""); }} style={styles.input}>
-                {vehicles.map((vehicle) => (
-                  <option key={vehicle.name} value={vehicle.name}>{vehicle.name} ({vehicle.capacity} Tons)</option>
-                ))}
-              </select>
+
             </div>
 
             <button onClick={calculateTransport} disabled={loading} style={styles.calculateButton}>
@@ -1054,7 +1036,7 @@ function TransportCost({
                 <div style={styles.totalHero}>
                   <span style={styles.totalLabel}>Estimated Transport Cost</span>
                   <strong style={styles.totalValue}>₹{formatCurrency(result.totalCost)}</strong>
-                  <span style={styles.totalSub}>₹{formatCurrency(displayedCostPerTon)} per ton</span>
+                  <span style={styles.totalSub}>₹{formatCurrency(result.costPerTon)} per ton</span>
                 </div>
                 <div style={styles.resultGrid}>
                   <ResultItem label="One Way Distance" value={`${result.oneWayDistance ?? result.distance ?? 0} KM`} />
@@ -1064,7 +1046,7 @@ function TransportCost({
                   <ResultItem label="Driver Cost" value={`₹${formatCurrency(result.driverCost)}`} />
                   <ResultItem label="Loading Cost" value={`₹${formatCurrency(result.loadingCost)}`} />
                   <ResultItem label="Unloading Cost" value={`₹${formatCurrency(result.unloadingCost)}`} />
-                  <ResultItem label="Cost Per Ton" value={`₹${formatCurrency(displayedCostPerTon)}`} />
+                  <ResultItem label="Cost Per Ton" value={`₹${formatCurrency(result.costPerTon)}`} />
                 </div>
                 <button onClick={sendProcurementRequest} disabled={sendingRequest} style={styles.sendButton}>
                   {sendingRequest ? "Sending Request..." : "Send Procurement Request"}

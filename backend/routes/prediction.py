@@ -124,6 +124,31 @@ except Exception as e:
 
 
 # =====================================================
+# MODEL STATUS ENDPOINT
+# =====================================================
+
+@prediction_bp.route("/prediction/status", methods=["GET"])
+@prediction_bp.route("/predict/status", methods=["GET"])
+def prediction_status():
+    is_ready = bool(
+        model is not None and
+        district_encoder is not None and
+        crop_encoder is not None and
+        season_encoder is not None
+    )
+
+    return jsonify({
+        "success": True,
+        "model_loaded": is_ready,
+        "message": (
+            "Crop prediction model is ready."
+            if is_ready
+            else "Crop prediction model is not loaded."
+        )
+    }), (200 if is_ready else 503)
+
+
+# =====================================================
 # MATCH VALUE WITH ENCODER
 # =====================================================
 
@@ -161,8 +186,19 @@ def match_encoder_value(
     methods=["POST"]
 )
 def predict():
+    global model, district_encoder, crop_encoder, season_encoder
 
-    data = request.get_json() or {}
+    if model is None or district_encoder is None or crop_encoder is None or season_encoder is None:
+        try:
+            load_prediction_model()
+        except Exception as load_err:
+            print("Model load retry failed:", load_err)
+            return jsonify({
+                "success": False,
+                "message": "Crop prediction ML model files are not loaded or missing on the server. Please ensure the trained .pkl model files are deployed."
+            }), 503
+
+    data = request.get_json(silent=True) or {}
 
     print("===================================")
     print(" Prediction request:", data)
@@ -171,25 +207,11 @@ def predict():
     # GET INPUT
     # =================================================
 
-    district_input = data.get(
-        "district"
-    )
-
-    crop_input = data.get(
-        "crop"
-    )
-
-    season_input = data.get(
-        "season"
-    )
-
-    year = data.get(
-        "year"
-    )
-
-    area = data.get(
-        "area"
-    )
+    district_input = data.get("district") or data.get("District")
+    crop_input = data.get("crop") or data.get("Crop")
+    season_input = data.get("season") or data.get("Season")
+    year = data.get("year") if data.get("year") is not None else data.get("Year")
+    area = data.get("area") if data.get("area") is not None else data.get("Area")
 
     print(
         " District received:",

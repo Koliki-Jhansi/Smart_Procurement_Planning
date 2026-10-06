@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-
-const API = "http://127.0.0.1:5000";
+import { API_BASE_URL as API } from "../apiConfig";
 
 function ProcurementCenter({
 user,
@@ -514,7 +513,7 @@ try {
   ) {
 
     setError(
-      "Unable to connect to the backend. Please make sure Flask is running on port 5000."
+      "Unable to load procurement centers. Please check your connection or try again later."
     );
 
   } else {
@@ -669,10 +668,37 @@ const handleSelectCenter =
     center
   );
 
+  setSelectedCenter(center);
+  setError("");
 
-  setSelectedCenter(
-    center
-  );
+  if (!farmerCrop) {
+    setError("Crop information is missing.");
+    return;
+  }
+
+  // Selecting a center immediately opens the Transport page.
+  // Preserve the complete crop-prediction object and production in tons.
+  const transportData = {
+    center,
+    selectedCrop: farmerCrop,
+    crop: farmerCropName,
+    estimated_production:
+      typeof farmerCrop === "object" && farmerCrop !== null
+        ? (
+            farmerCrop?.estimated_production ??
+            farmerCrop?.estimatedProduction ??
+            farmerCrop?.predicted_production ??
+            farmerCrop?.predictedProduction ??
+            farmerCrop?.production ??
+            null
+          )
+        : null,
+    district: activeDistrict,
+  };
+
+  if (onSelectCenter) {
+    onSelectCenter(transportData);
+  }
 
 };
 
@@ -1270,15 +1296,7 @@ return (
 
                     >
 
-                      {
-
-                        isSelected
-
-                          ? "✓ Selected Center"
-
-                          : "Select This Center"
-
-                      }
+                      Select Center →
 
                     </button>
 
@@ -1298,7 +1316,7 @@ return (
               CONTINUE
           ========================================= */}
 
-          {selectedCenter && (
+          {false && selectedCenter && (
 
             <div style={styles.continueCard}>
 

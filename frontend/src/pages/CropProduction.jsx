@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import axios from "axios";
-
-const API = "http://127.0.0.1:5000";
+import { API_BASE_URL as API } from "../apiConfig";
 
 function CropProduction({ user, goBack, onPrediction }) {
   // Use logged-in farmer's district automatically
@@ -45,11 +44,11 @@ function CropProduction({ user, goBack, onPrediction }) {
       const response = await axios.post(
         `${API}/api/predict`,
         {
-          District: district,
-          Crop: crop,
-          Season: season,
-          Year: Number(year),
-          Area: Number(area),
+          district: district,
+          crop: crop,
+          season: season,
+          year: Number(year),
+          area: Number(area),
         }
       );
 
@@ -107,7 +106,7 @@ function CropProduction({ user, goBack, onPrediction }) {
         );
       } else if (err.request) {
         setError(
-          "Unable to connect to server. Make sure Flask is running on http://127.0.0.1:5000."
+          "Unable to contact the prediction service. Please verify your connection or try again later."
         );
       } else {
         setError(
