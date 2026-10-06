@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 
 function MyRequests({
   requests = [],
@@ -7,6 +7,67 @@ function MyRequests({
   completionSaving = null,
   markProcurementCompleted
 }) {
+  const [activeFilter, setActiveFilter] = useState("all");
+
+  const normalizeStatus = (status) =>
+    String(status || "").trim().toLowerCase();
+
+  const isSuggested = (requestItem) => Boolean(
+    requestItem?.suggested_center_id ||
+    requestItem?.suggested_center_name ||
+    requestItem?.alternative_center_id ||
+    requestItem?.alternative_center_name ||
+    ["suggested", "suggested_center", "center_suggested"].includes(
+      normalizeStatus(requestItem?.status)
+    )
+  );
+
+  const effectiveStatus = (requestItem) => {
+    const reqStatus = normalizeStatus(requestItem?.status);
+    const appointment = appointments.find(
+      (item) =>
+        Number(item?.procurement_request_id) === Number(requestItem?.id) ||
+        String(item?.procurement_request_id) === String(requestItem?.id)
+    );
+    const appStatus = normalizeStatus(appointment?.status);
+    if (reqStatus === "completed" || appStatus === "completed") return "completed";
+    if (
+      ["rejected", "cancelled", "cancel"].includes(reqStatus) ||
+      ["rejected", "cancelled", "cancel"].includes(appStatus)
+    ) return "rejected";
+    if (
+      ["approved", "accepted", "booked", "scheduled"].includes(reqStatus) ||
+      ["approved", "accepted", "booked", "scheduled"].includes(appStatus)
+    ) return "accepted";
+    if (
+      ["suggested", "suggested_center", "center_suggested"].includes(reqStatus) ||
+      isSuggested(requestItem)
+    ) return "suggested";
+    return reqStatus || "pending";
+  };
+
+  const matchesFilter = (requestItem) => {
+    if (activeFilter === "all") return true;
+    const status = effectiveStatus(requestItem);
+    if (activeFilter === "pending") return status === "pending";
+    if (activeFilter === "accepted") return ["approved", "accepted", "booked", "scheduled"].includes(status);
+    if (activeFilter === "rejected") return ["rejected", "cancelled"].includes(status);
+    if (activeFilter === "completed") return status === "completed";
+    if (activeFilter === "suggested") return status === "suggested";
+    return true;
+  };
+
+  const filteredRequests = requests.filter(matchesFilter);
+
+  const filterCounts = {
+    all: requests.length,
+    pending: requests.filter((r) => effectiveStatus(r) === "pending").length,
+    accepted: requests.filter((r) => ["approved", "accepted", "booked", "scheduled"].includes(effectiveStatus(r))).length,
+    rejected: requests.filter((r) => ["rejected", "cancelled"].includes(effectiveStatus(r))).length,
+    completed: requests.filter((r) => effectiveStatus(r) === "completed").length,
+    suggested: requests.filter((r) => effectiveStatus(r) === "suggested").length,
+  };
+
   // =====================================================
   // HELPERS
   // =====================================================
@@ -154,9 +215,32 @@ function MyRequests({
         </div>
       </div>
 
+      <div style={styles.filterBar}>
+        {[
+          ["all", "All Requests"],
+          ["pending", "Pending"],
+          ["accepted", "Accepted"],
+          ["rejected", "Rejected"],
+          ["completed", "Completed"],
+          ["suggested", "Suggested Centers"],
+        ].map(([key, label]) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => setActiveFilter(key)}
+            style={{
+              ...styles.filterButton,
+              ...(activeFilter === key ? styles.filterButtonActive : {}),
+            }}
+          >
+            {label} <span style={styles.filterCount}>{filterCounts[key]}</span>
+          </button>
+        ))}
+      </div>
+
       {/* EMPTY */}
 
-      {requests.length === 0 ? (
+      {filteredRequests.length === 0 ? (
         <div style={styles.stateCard}>
           <div style={styles.stateIcon}>
             📋
@@ -178,7 +262,7 @@ function MyRequests({
 
         <div style={styles.requestGrid}>
 
-          {requests.map((requestItem) => {
+          {filteredRequests.map((requestItem) => {
             const appointment =
               getAppointment(requestItem?.id);
 
@@ -453,7 +537,7 @@ function MyRequests({
 
                 {appointment &&
                   normalizedStatus ===
-                    "booked" && (
+                    "accepted" && (
                     <button
                       type="button"
                       disabled={
@@ -622,6 +706,31 @@ const styles = {
     color: "#183e2c",
     fontFamily:
       "Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+  },
+
+  filterBar: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: "10px",
+    marginBottom: "24px"
+  },
+  filterButton: {
+    border: "1px solid #d7e5dc",
+    background: "#ffffff",
+    color: "#315b47",
+    borderRadius: "12px",
+    padding: "11px 16px",
+    fontWeight: "800",
+    cursor: "pointer"
+  },
+  filterButtonActive: {
+    background: "#176b48",
+    color: "#ffffff",
+    borderColor: "#176b48"
+  },
+  filterCount: {
+    marginLeft: "7px",
+    fontWeight: "900"
   },
 
   // HEADER

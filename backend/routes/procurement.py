@@ -762,9 +762,135 @@ def get_road_distance(lat1, lon1, lat2, lon2):
         return None, None, "valhalla_api_error"
 
 
+# ==========================================================
+# VILLAGE COORDINATES CSV DATASET
+# ==========================================================
+
+VILLAGE_COORDINATES_FILE = os.path.join(
+    DATASETS_DIR,
+    "location_district_mandal_village_with_coordinates.csv"
+)
+
+_village_coordinates_cache = None
+
+
+def load_village_coordinates():
+    """Load the village coordinates CSV master dataset."""
+    global _village_coordinates_cache
+    if _village_coordinates_cache is not None:
+        return _village_coordinates_cache
+
+    if not os.path.exists(VILLAGE_COORDINATES_FILE):
+        print(f"Village coordinates file not found at {VILLAGE_COORDINATES_FILE}")
+        _village_coordinates_cache = []
+        return _village_coordinates_cache
+
+    try:
+        df = pd.read_csv(VILLAGE_COORDINATES_FILE)
+        df.columns = [str(col).strip().lower() for col in df.columns]
+        records = df.to_dict(orient="records")
+        _village_coordinates_cache = records
+        print(f"Loaded {len(records)} village coordinates from CSV.")
+        return _village_coordinates_cache
+    except Exception as error:
+        print("Error loading village coordinates CSV:", str(error))
+        _village_coordinates_cache = []
+        return _village_coordinates_cache
+
+
 def resolve_village_coordinates(district, mandal, village):
-    """Compatibility wrapper: farmer coordinates now come from Geoapify."""
-    lat, lon, formatted, status = geocode_location(village, mandal, district)
+    """
+    Resolve coordinates for a given (district, mandal, village).
+    First queries the master CSV dataset, then falls back to Geoapify geocoding.
+    """
+    records = load_village_coordinates()
+
+    norm_district = normalize_text(district)
+    norm_mandal = normalize_text(mandal)
+    norm_village = normalize_text(village)
+
+    if records:
+        # 1. Exact match (district, mandal, village)
+        if norm_district and norm_mandal and norm_village:
+            for r in records:
+                if (
+                    normalize_text(r.get("district")) == norm_district
+                    and normalize_text(r.get("mandal")) == norm_mandal
+                    and normalize_text(r.get("village")) == norm_village
+                ):
+                    lat = optional_float(r.get("latitude"))
+                    lon = optional_float(r.get("longitude"))
+                    if valid_coordinates(lat, lon):
+                        return lat, lon, clean_value(r.get("lgd_village_code"), "")
+
+        # 2. Match (mandal, village)
+        if norm_mandal and norm_village:
+            for r in records:
+                if (
+                    normalize_text(r.get("mandal")) == norm_mandal
+                    and normalize_text(r.get("village")) == norm_village
+                ):
+                    lat = optional_float(r.get("latitude"))
+                    lon = optional_float(r.get("longitude"))
+                    if valid_coordinates(lat, lon):
+                        return lat, lon, clean_value(r.get("lgd_village_code"), "")
+
+        # 3. Match (district, village)
+        if norm_district and norm_village:
+            for r in records:
+                if (
+                    normalize_text(r.get("district")) == norm_district
+                    and normalize_text(r.get("village")) == norm_village
+                ):
+                    lat = optional_float(r.get("latitude"))
+                    lon = optional_float(r.get("longitude"))
+                    if valid_coordinates(lat, lon):
+                        return lat, lon, clean_value(r.get("lgd_village_code"), "")
+
+        # 4. Match village alone
+        if norm_village:
+            for r in records:
+                if normalize_text(r.get("village")) == norm_village:
+                    lat = optional_float(r.get("latitude"))
+                    lon = optional_float(r.get("longitude"))
+                    if valid_coordinates(lat, lon):
+                        return lat, lon, clean_value(r.get("lgd_village_code"), "")
+
+        # 5. Partial match on village substring
+        if norm_village and len(norm_village) >= 3:
+            for r in records:
+                r_v = normalize_text(r.get("village"))
+                if norm_village in r_v or r_v in norm_village:
+                    if not norm_district or normalize_text(r.get("district")) == norm_district:
+                        lat = optional_float(r.get("latitude"))
+                        lon = optional_float(r.get("longitude"))
+                        if valid_coordinates(lat, lon):
+                            return lat, lon, clean_value(r.get("lgd_village_code"), "")
+
+        # 6. Fallback: match mandal & district to get representative coordinates
+        if norm_mandal and norm_district:
+            for r in records:
+                if (
+                    normalize_text(r.get("district")) == norm_district
+                    and normalize_text(r.get("mandal")) == norm_mandal
+                ):
+                    lat = optional_float(r.get("latitude"))
+                    lon = optional_float(r.get("longitude"))
+                    if valid_coordinates(lat, lon):
+                        return lat, lon, clean_value(r.get("lgd_village_code"), "")
+
+        # 7. Fallback: match district alone
+        if norm_district:
+            for r in records:
+                if normalize_text(r.get("district")) == norm_district:
+                    lat = optional_float(r.get("latitude"))
+                    lon = optional_float(r.get("longitude"))
+                    if valid_coordinates(lat, lon):
+                        return lat, lon, clean_value(r.get("lgd_village_code"), "")
+
+    # Secondary fallback: Geoapify API geocoding
+    place = village or mandal or district
+    lat, lon, formatted, status = geocode_location(place, mandal, district)
     return lat, lon, ""
 
 
@@ -993,18 +1119,34 @@ def get_procurement_centers():
 
 
         # ==================================================
-        # FARMER VILLAGE COORDINATES FROM GEOAPIFY
+        # FARMER ORIGIN COORDINATES
         # ==================================================
 
-        (
-            farmer_latitude,
-            farmer_longitude,
-            farmer_village_code
-        ) = resolve_village_coordinates(
-            district,
-            farmer_mandal,
-            farmer_village
+        origin_lat = optional_float(
+            request.args.get("originLatitude")
+            or request.args.get("latitude")
+            or request.args.get("lat")
         )
+        origin_lon = optional_float(
+            request.args.get("originLongitude")
+            or request.args.get("longitude")
+            or request.args.get("lon")
+        )
+
+        if valid_coordinates(origin_lat, origin_lon):
+            farmer_latitude = origin_lat
+            farmer_longitude = origin_lon
+            farmer_village_code = "query_coordinates"
+        else:
+            (
+                farmer_latitude,
+                farmer_longitude,
+                farmer_village_code
+            ) = resolve_village_coordinates(
+                district,
+                farmer_mandal,
+                farmer_village
+            )
 
 
         print("")
@@ -1374,21 +1516,38 @@ def get_procurement_centers():
 
 
             # ==============================================
-            # PROCUREMENT CENTER COORDINATES FROM GEOAPIFY
+            # PROCUREMENT CENTER COORDINATES (DIRECT FROM CSV)
             # ==============================================
 
-            center_geocode_name = location or village or mandal or center_name
-
-            (
-                center_latitude,
-                center_longitude,
-                center_geocoded_address,
-                center_geocode_status
-            ) = geocode_location(
-                center_geocode_name,
-                mandal,
-                center_district
+            center_latitude = optional_float(
+                get_column_value(
+                    center,
+                    ["latitude", "Latitude", "lat", "Lat"]
+                )
             )
+
+            center_longitude = optional_float(
+                get_column_value(
+                    center,
+                    ["longitude", "Longitude", "lon", "lng", "Lon", "Lng"]
+                )
+            )
+
+            center_geocoded_address = f"{location}, {center_district}" if location else str(center_district)
+            center_geocode_status = "csv_dataset"
+
+            if not valid_coordinates(center_latitude, center_longitude):
+                center_geocode_name = location or village or mandal or center_name
+                (
+                    center_latitude,
+                    center_longitude,
+                    center_geocoded_address,
+                    center_geocode_status
+                ) = geocode_location(
+                    center_geocode_name,
+                    mandal,
+                    center_district
+                )
 
 
             # ==============================================
@@ -1415,7 +1574,7 @@ def get_procurement_centers():
                 )
             ):
 
-                # Keep Haversine only as diagnostic/reference information.
+                # Straight-line distance using Haversine formula
                 straight_line_distance = haversine_distance(
                     farmer_latitude,
                     farmer_longitude,
@@ -1423,10 +1582,10 @@ def get_procurement_centers():
                     center_longitude
                 )
 
-                # Transport distance must use the actual road network.
+                # Try driving road distance via Valhalla
                 (
-                    actual_distance,
-                    route_duration_minutes,
+                    road_distance,
+                    road_duration,
                     route_status
                 ) = get_road_distance(
                     farmer_latitude,
@@ -1435,7 +1594,18 @@ def get_procurement_centers():
                     center_longitude
                 )
 
-                distance_source = route_status
+                if road_distance is not None and road_distance > 0:
+                    actual_distance = road_distance
+                    route_duration_minutes = road_duration
+                    distance_source = route_status
+                else:
+                    # Fallback to straight-line distance so distance is NEVER missing
+                    actual_distance = straight_line_distance
+                    route_duration_minutes = round(
+                        (straight_line_distance / 40.0) * 60.0,
+                        1
+                    )
+                    distance_source = "haversine_distance"
 
 
             # ==============================================

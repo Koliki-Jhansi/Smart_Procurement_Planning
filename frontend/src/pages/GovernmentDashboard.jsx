@@ -937,6 +937,7 @@ function GovernmentDashboard({ user, onLogout }) {
           }}
         >
           {[
+            ["all", `All (${requests.length})`],
             ["pending", `Pending (${pending})`],
             ["accepted", `Accepted / Approved (${accepted})`],
             ["rejected", `Rejected (${rejected})`],
